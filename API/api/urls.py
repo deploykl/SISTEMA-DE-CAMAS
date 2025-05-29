@@ -12,13 +12,18 @@ router = DefaultRouter()
 router.register(r'estado-cama', EstadoCamaViewSet)
 router.register(r'tipo-cama', TipoCamaViewSet)
 router.register(r'ups', UPSViewSet)
+router.register(r'servicio', ServicioViewSet)
 router.register(r'ipress', IpressViewSet)
-#router.register(r'camas', CamaViewSet, basename='camas')  # Cambiado de '' a 'camas' para evitar conflictos
+router.register(r'cama', CamaViewSet, basename='cama')  # Nueva ruta para camas
 
 urlpatterns = [
     path('token/', TokenObtainPairView.as_view(), name="token_obtain_pair"),
     path('token/refresh/', TokenRefreshView.as_view(), name="token_refresh"),
     path('token/verify/', TokenVerifyView.as_view(), name="token_verify"),
     path('token/blacklist/', TokenBlacklistView.as_view(), name="token_blacklist"),
+    
+    path('login/', LoginView.as_view(), name='login'),
+    path('logout/', LogoutView.as_view(), name='logout'),
+    
     path('', include(router.urls)),  # Incluye todas las rutas registradas en el router
 ]

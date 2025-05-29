@@ -55,7 +55,11 @@ class Ipress(models.Model):
     id = models.AutoField(primary_key=True, verbose_name="IdIpress") 
     codigo = models.CharField(max_length=255, unique=True, verbose_name="Código Ipress")  
     descripcion = models.CharField(max_length=255, unique=True, verbose_name="Descripción")  
-
+    usuario = models.ForeignKey(
+        get_user_model(), 
+        on_delete=models.CASCADE,
+        related_name='ipress_registradas'
+    )
     class Meta:
         verbose_name = "Ipress"
         verbose_name_plural = "Ipress"
@@ -66,11 +70,11 @@ class Ipress(models.Model):
     
 class Cama(models.Model):
     id = models.AutoField(primary_key=True, verbose_name="IdCama") 
-    codcama = models.CharField(max_length=255,unique=True, verbose_name="Código de Cama")  
+    codcama = models.CharField(max_length=255, verbose_name="Código de Cama")  
     tipocama = models.ForeignKey(TipoCama, on_delete=models.CASCADE, related_name='camas', verbose_name="Tipo de Cama")
-    ups  = models.ForeignKey(UPS, on_delete=models.CASCADE, related_name='camas', verbose_name="UPS")
+    ups = models.ForeignKey(UPS, on_delete=models.CASCADE, related_name='camas', verbose_name="UPS")
     servicio = models.ForeignKey(Servicio, on_delete=models.CASCADE, related_name='camas', verbose_name="Servicio")
-    estado  = models.ForeignKey(EstadoCama, on_delete=models.CASCADE, related_name='camas', verbose_name="Estado de Cama")
+    estado = models.ForeignKey(EstadoCama, on_delete=models.CASCADE, related_name='camas', verbose_name="Estado de Cama")
     ipress = models.ForeignKey(Ipress, on_delete=models.CASCADE, related_name='camas', verbose_name="Ipress")
     
     fecha_registro = models.DateTimeField(auto_now_add=True, verbose_name="Fecha de Registro")
@@ -79,8 +83,10 @@ class Cama(models.Model):
     class Meta:
         verbose_name = "Cama"
         verbose_name_plural = "Camas"
-        ordering = ["codcama"]  
+        ordering = ["codcama"]
+        # Asegurar que el código de cama sea único dentro de cada IPRESS
+        unique_together = ('codcama', 'ipress')
 
     def __str__(self):
-        return f"{self.codcama} ({self.tipocama}, {self.estado})"  # Incluye estado
+        return f"{self.codcama} ({self.tipocama}, {self.estado})"
     
