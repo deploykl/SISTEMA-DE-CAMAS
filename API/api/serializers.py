@@ -32,15 +32,26 @@ class UPSViewSerializer(serializers.ModelSerializer):
         fields = '__all__'
 
 class CamaSerializer(serializers.ModelSerializer):
-    tipocama = TipoCamaSerializer()
-    servicio = ServicioSerializer()
-    ups = UPSViewSerializer()
-    estado = EstadoCamaSerializer()
-    ipress = IpressSerializer()
-
     class Meta:
         model = Cama
         fields = '__all__'
+        extra_kwargs = {
+            'tipocama': {'required': True},
+            'servicio': {'required': True},
+            'ups': {'required': True},
+            'estado': {'required': True},
+            'ipress': {'required': True}
+        }
+
+    def to_representation(self, instance):
+        # Esto es para la representación (GET)
+        representation = super().to_representation(instance)
+        representation['tipocama'] = TipoCamaSerializer(instance.tipocama).data
+        representation['servicio'] = ServicioSerializer(instance.servicio).data
+        representation['ups'] = UPSViewSerializer(instance.ups).data
+        representation['estado'] = EstadoCamaSerializer(instance.estado).data
+        representation['ipress'] = IpressSerializer(instance.ipress).data
+        return representation
 
 class UserSerializer(serializers.ModelSerializer):
     has_ipress = serializers.SerializerMethodField()

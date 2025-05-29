@@ -3,8 +3,7 @@
         <div class="row">
             <div class="col-md-12">
                 <div class="card shadow-lg border-0">
-                    <div
-                        class="card-header bg-gradient-primary text-white d-flex justify-content-between align-items-center">
+                    <div class="card-header bg-gradient-primary text-white d-flex justify-content-between align-items-center">
                         <div class="d-flex align-items-center">
                             <i class="fas fa-bed fa-2x me-3"></i>
                             <div>
@@ -57,12 +56,10 @@
                                             </span>
                                         </td>
                                         <td class="text-end pe-4">
-                                            <button class="btn btn-sm btn-icon btn-outline-primary me-2"
-                                                @click="editCama(cama)">
+                                            <button class="btn btn-sm btn-icon btn-outline-primary me-2" @click="editCama(cama)">
                                                 <i class="fas fa-pen"></i>
                                             </button>
-                                            <button class="btn btn-sm btn-icon btn-outline-danger"
-                                                @click="confirmDelete(cama)">
+                                            <button class="btn btn-sm btn-icon btn-outline-danger" @click="confirmDelete(cama)">
                                                 <i class="fas fa-trash"></i>
                                             </button>
                                         </td>
@@ -81,9 +78,9 @@
             </div>
         </div>
 
-        <!-- Modal para agregar/editar cama -->
-        <div v-if="showAddModal" class="modal fade show d-block" tabindex="-1" aria-modal="true" role="dialog"
-            style="background-color: rgba(0,0,0,0.5);">
+        <!-- Modal para agregar/editar cama - Versión corregida -->
+        <div v-if="showAddModal" class="modal-backdrop fade show" @click.self="closeModal"></div>
+        <div v-if="showAddModal" class="modal fade show d-block" tabindex="-1" style="display: block; z-index: 1050;">
             <div class="modal-dialog modal-lg modal-dialog-centered">
                 <div class="modal-content border-0 shadow">
                     <div class="modal-header bg-gradient-primary text-white">
@@ -91,8 +88,7 @@
                             <i class="fas fa-bed me-2"></i>
                             {{ editingCama ? 'Editar Cama' : 'Registrar Nueva Cama' }}
                         </h5>
-                        <button type="button" class="btn-close btn-close-white" @click="closeModal"
-                            aria-label="Close"></button>
+                        <button type="button" class="btn-close btn-close-white" @click="closeModal" aria-label="Close"></button>
                     </div>
                     <div class="modal-body">
                         <form @submit.prevent="saveCama">
@@ -103,8 +99,7 @@
                                         <span class="input-group-text bg-light">
                                             <i class="fas fa-hashtag text-primary"></i>
                                         </span>
-                                        <input type="text" class="form-control" v-model="currentCama.codcama" required
-                                            placeholder="Ej: CAMA-001">
+                                        <input type="text" class="form-control" v-model="currentCama.codcama" required placeholder="Ej: CAMA-001">
                                     </div>
                                 </div>
                                 <div class="col-md-6">
@@ -115,8 +110,7 @@
                                         </span>
                                         <select class="form-select" v-model="currentCama.tipocama_id" required>
                                             <option value="" disabled>Seleccione un tipo</option>
-                                            <option v-for="tipo in tiposCama" :key="tipo.id" :value="tipo.id">{{
-                                                tipo.descripcion }}</option>
+                                            <option v-for="tipo in tiposCama" :key="tipo.id" :value="tipo.id">{{ tipo.descripcion }}</option>
                                         </select>
                                     </div>
                                 </div>
@@ -128,8 +122,7 @@
                                         </span>
                                         <select class="form-select" v-model="currentCama.servicio_id" required>
                                             <option value="" disabled>Seleccione un servicio</option>
-                                            <option v-for="servicio in servicios" :key="servicio.id"
-                                                :value="servicio.id">{{ servicio.nombre }}</option>
+                                            <option v-for="servicio in servicios" :key="servicio.id" :value="servicio.id">{{ servicio.nombre }}</option>
                                         </select>
                                     </div>
                                 </div>
@@ -141,8 +134,7 @@
                                         </span>
                                         <select class="form-select" v-model="currentCama.ups_id" required>
                                             <option value="" disabled>Seleccione una UPS</option>
-                                            <option v-for="ups in upsList" :key="ups.id" :value="ups.id">{{ ups.nombre
-                                                }}</option>
+                                            <option v-for="ups in upsList" :key="ups.id" :value="ups.id">{{ ups.nombre }}</option>
                                         </select>
                                     </div>
                                 </div>
@@ -154,8 +146,7 @@
                                         </span>
                                         <select class="form-select" v-model="currentCama.estado_id" required>
                                             <option value="" disabled>Seleccione un estado</option>
-                                            <option v-for="estado in estadosCama" :key="estado.id" :value="estado.id">{{
-                                                estado.descripcion }}</option>
+                                            <option v-for="estado in estadosCama" :key="estado.id" :value="estado.id">{{ estado.descripcion }}</option>
                                         </select>
                                     </div>
                                 </div>
@@ -173,12 +164,11 @@
                     </div>
                 </div>
             </div>
-            <div class="modal-backdrop fade show" @click.stop></div>
         </div>
 
-        <!-- Modal de confirmación para eliminar -->
-        <div v-if="showDeleteModal" class="modal fade show d-block" tabindex="-1" aria-modal="true" role="dialog"
-            style="background-color: rgba(0,0,0,0.5);">
+        <!-- Modal de confirmación para eliminar - Versión corregida -->
+        <div v-if="showDeleteModal" class="modal-backdrop fade show" @click.self="showDeleteModal = false"></div>
+        <div v-if="showDeleteModal" class="modal fade show d-block" tabindex="-1" style="display: block; z-index: 1051;">
             <div class="modal-dialog modal-dialog-centered">
                 <div class="modal-content border-0 shadow">
                     <div class="modal-header bg-gradient-danger text-white">
@@ -186,8 +176,7 @@
                             <i class="fas fa-exclamation-triangle me-2"></i>
                             Confirmar Eliminación
                         </h5>
-                        <button type="button" class="btn-close btn-close-white"
-                            @click="showDeleteModal = false"></button>
+                        <button type="button" class="btn-close btn-close-white" @click="showDeleteModal = false"></button>
                     </div>
                     <div class="modal-body">
                         <div class="text-center mb-4">
@@ -206,7 +195,6 @@
                     </div>
                 </div>
             </div>
-            <div class="modal-backdrop fade show" @click.stop></div>
         </div>
     </div>
 </template>
@@ -237,18 +225,19 @@ const camaToDelete = ref(null)
 const currentCama = ref(createEmptyCama())
 
 function openAddModal() {
-    document.body.classList.add('modal-open');
-    showAddModal.value = true;
+    document.body.style.overflow = 'hidden'
+    showAddModal.value = true
 }
 
 function closeModal() {
-    document.body.classList.remove('modal-open');
-    showAddModal.value = false;
-    editingCama.value = false;
-    currentCama.value = createEmptyCama();
+    document.body.style.overflow = 'auto'
+    showAddModal.value = false
+    editingCama.value = false
+    currentCama.value = createEmptyCama()
 }
 
 function confirmDelete(cama) {
+    document.body.style.overflow = 'hidden'
     camaToDelete.value = cama
     showDeleteModal.value = true
 }
@@ -258,6 +247,7 @@ async function deleteCama() {
         await api.delete(`cama/${camaToDelete.value.id}/`)
         toast.success('Cama eliminada correctamente', { position: 'top-right' })
         showDeleteModal.value = false
+        document.body.style.overflow = 'auto'
         await fetchData()
     } catch (error) {
         console.error('Error al eliminar cama:', error)
@@ -271,17 +261,16 @@ function createEmptyCama() {
     return {
         id: null,
         codcama: '',
-        tipocama_id: '',
-        servicio_id: '',
-        ups_id: '',
-        estado_id: '',
-        ipress: ipress?.id || null
+        tipocama_id: '',  // Cambiado de '' a null
+        servicio_id: '',  // Cambiado de '' a null
+        ups_id: '',       // Cambiado de '' a null
+        estado_id: '',    // Cambiado de '' a null
+        ipress: ipress?.id || ''
     }
 }
 
 function getServicioIcon(servicioNombre) {
     if (!servicioNombre) return 'fa-procedures'
-
     const servicioLower = servicioNombre.toLowerCase()
     if (servicioLower.includes('pediatr')) return 'fa-child'
     if (servicioLower.includes('neo')) return 'fa-baby'
@@ -292,7 +281,6 @@ function getServicioIcon(servicioNombre) {
 
 function getEstadoIcon(estadoDescripcion) {
     if (!estadoDescripcion) return 'fa-info-circle'
-
     const estadoLower = estadoDescripcion.toLowerCase()
     if (estadoLower.includes('disponible')) return 'fa-check-circle'
     if (estadoLower.includes('ocupada')) return 'fa-times-circle'
@@ -302,7 +290,6 @@ function getEstadoIcon(estadoDescripcion) {
 
 function getEstadoBadge(estadoDescripcion) {
     if (!estadoDescripcion) return 'bg-soft-secondary text-secondary'
-
     const estadoLower = estadoDescripcion.toLowerCase()
     if (estadoLower.includes('disponible')) return 'bg-soft-success text-success'
     if (estadoLower.includes('ocupada')) return 'bg-soft-danger text-danger'
@@ -357,31 +344,46 @@ function editCama(cama) {
 
 async function saveCama() {
     try {
+        // Preparar los datos en el formato que espera Django
         const camaData = {
             codcama: currentCama.value.codcama,
-            tipocama: currentCama.value.tipocama_id,
-            servicio: currentCama.value.servicio_id,
             ups: currentCama.value.ups_id,
             estado: currentCama.value.estado_id,
             ipress: currentCama.value.ipress,
-        }
+            tipocama: currentCama.value.tipocama_id,
+            servicio: currentCama.value.servicio_id
+        };
+
+        console.log('Datos enviados:', camaData); // Para depuración
 
         if (editingCama.value) {
-            await api.put(`cama/${currentCama.value.id}/`, camaData)
-            toast.success('Cama actualizada correctamente', { position: 'top-right' })
+            await api.put(`cama/${currentCama.value.id}/`, camaData);
+            toast.success('Cama actualizada correctamente', { position: 'top-right' });
         } else {
-            await api.post('cama/', camaData)
-            toast.success('Cama creada correctamente', { position: 'top-right' })
+            await api.post('cama/', camaData);
+            toast.success('Cama creada correctamente', { position: 'top-right' });
         }
 
-        closeModal()
-        await fetchData()
+        closeModal();
+        await fetchData();
     } catch (error) {
-        console.error('Error al guardar cama:', error)
-        const errorMsg = error.response?.data?.message || 'Error al guardar la cama'
-        toast.error(errorMsg, { position: 'top-right' })
+        console.error('Error al guardar cama:', error);
+        console.error('Detalles del error:', error.response?.data);
+        
+        let errorMsg = 'Error al guardar la cama';
+        if (error.response?.data) {
+            // Procesar errores de validación de Django
+            const errors = [];
+            for (const [field, messages] of Object.entries(error.response.data)) {
+                errors.push(`${field}: ${messages.join(', ')}`);
+            }
+            errorMsg = errors.join(' | ');
+        }
+        
+        toast.error(errorMsg, { position: 'top-right' });
     }
 }
+
 
 // Inicialización
 onMounted(fetchData)
@@ -449,19 +451,7 @@ onMounted(fetchData)
     font-size: 0.8em;
 }
 
-/* Estilos adicionales para corregir el problema */
-.modal {
-    overflow-y: auto;
-}
-
-.modal-open {
-    overflow: hidden;
-}
-
-.modal-content {
-    pointer-events: auto;
-}
-
+/* Estilos para los modales corregidos */
 .modal-backdrop {
     position: fixed;
     top: 0;
@@ -470,5 +460,34 @@ onMounted(fetchData)
     width: 100vw;
     height: 100vh;
     background-color: rgba(0, 0, 0, 0.5);
+}
+
+.modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    z-index: 1050;
+    width: 100%;
+    height: 100%;
+    overflow-y: auto;
+}
+
+.modal-dialog {
+    position: relative;
+    margin: 1.75rem auto;
+    pointer-events: none;
+}
+
+.modal-content {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    pointer-events: auto;
+    background-color: #fff;
+    background-clip: padding-box;
+    border: 1px solid rgba(0, 0, 0, 0.2);
+    border-radius: 0.3rem;
+    outline: 0;
 }
 </style>
