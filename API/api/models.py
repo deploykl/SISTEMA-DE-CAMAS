@@ -2,7 +2,6 @@ from django.db import models
 from django.contrib.auth import get_user_model
 User = get_user_model()
 
-
 class EstadoCama(models.Model):
     id = models.AutoField(primary_key=True, verbose_name="IdEstadoCama")  
     descripcion = models.CharField(max_length=255, unique=True, verbose_name="Descripción")  
@@ -42,7 +41,7 @@ class UPS(models.Model):
 class Servicio(models.Model):
     id = models.AutoField(primary_key=True, verbose_name="IdServicios") 
     nombre = models.CharField(max_length=100, unique=True, verbose_name="Nombre Servicio")
-    # Ejemplo: "Adultos", "Neonatal", "Pediatría"
+    prefijo = models.CharField(max_length=10, unique=True, verbose_name="Prefijo para código")
 
     class Meta:
         verbose_name = "Servicio"
@@ -90,3 +89,52 @@ class Cama(models.Model):
     def __str__(self):
         return f"{self.codcama} ({self.tipocama}, {self.estado})"
     
+class Paciente(models.Model):
+    id = models.AutoField(primary_key=True, verbose_name="IdPaciente")
+    documento_identidad = models.CharField(max_length=20, unique=True, verbose_name="DNI/CE")
+    nombres = models.CharField(max_length=100)
+    apellidos = models.CharField(max_length=100)
+    fecha_nacimiento = models.DateField()
+    genero = models.CharField(max_length=1, choices=[('M', 'Masculino'), ('F', 'Femenino')])
+    
+    class Meta:
+        verbose_name = "Paciente"
+        verbose_name_plural = "Pacientes"
+        ordering = ["apellidos", "nombres"]
+
+    def __str__(self):
+        return f"{self.apellidos}, {self.nombres}"
+    
+class OcupacionCama(models.Model):
+    id = models.AutoField(primary_key=True, verbose_name="IdOcupacion")
+    cama = models.ForeignKey(Cama, on_delete=models.CASCADE, related_name='ocupaciones')
+    paciente = models.ForeignKey(Paciente, on_delete=models.CASCADE, related_name='ocupaciones_camas')
+    fecha_ingreso = models.DateTimeField(auto_now_add=True)
+    fecha_salida = models.DateTimeField(null=True, blank=True)
+    motivo_ingreso = models.TextField()
+    motivo_salida = models.TextField(null=True, blank=True)
+    usuario_registro = models.ForeignKey(User, on_delete=models.SET_NULL, null=True)
+    
+    class Meta:
+        verbose_name = "Ocupación de Cama"
+        verbose_name_plural = "Ocupaciones de Camas"
+        ordering = ["-fecha_ingreso"]
+
+    def __str__(self):
+        return f"{self.paciente} en {self.cama}"
+    
+class TransferenciaCama(models.Model):
+    id = models.AutoField(primary_key=True, verbose_name="IdTransferencia")
+    ocupacion_origen = models.ForeignKey(OcupacionCama, on_delete=models.CASCADE, related_name='transferencias_origen')
+    cama_destino = models.ForeignKey(Cama, on_delete=models.CASCADE, related_name='transferencias_recibidas')
+    fecha_transferencia = models.DateTimeField(auto_now_add=True)
+    motivo = models.TextField()
+    usuario = models.ForeignKey(User, on_delete=models.SET_NULL, null=True)
+    
+    class Meta:
+        verbose_name = "Transferencia de Cama"
+        verbose_name_plural = "Transferencias de Camas"
+        ordering = ["-fecha_transferencia"]
+
+    def __str__(self):
+        return f"Transferencia de {self.ocupacion_origen.cama} a {self.cama_destino}"

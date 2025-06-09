@@ -15,6 +15,9 @@ router.register(r'ups', UPSViewSet)
 router.register(r'servicio', ServicioViewSet)
 router.register(r'ipress', IpressViewSet)
 router.register(r'cama', CamaViewSet, basename='cama')  # Nueva ruta para camas
+router.register(r'paciente', PacienteViewSet)  # Ruta para pacientes
+router.register(r'ocupacion-cama', OcupacionCamaViewSet)  # Ruta para ocupaciones de camas
+router.register(r'transferencia-cama', TransferenciaCamaViewSet)  # Ruta para transferencias de camas
 
 urlpatterns = [
     path('token/', TokenObtainPairView.as_view(), name="token_obtain_pair"),
