@@ -86,11 +86,20 @@ const handleSubmit = async () => {
       password: password.value,
     });
 
-    const { access, refresh, has_ipress, ipress } = response.data;
+    const { access, refresh, has_ipress, ipress, user } = response.data; // Asegúrate que el backend envíe estos datos
 
     localStorage.setItem('auth_token', access);
     localStorage.setItem('refreshToken', refresh);
     localStorage.setItem('has_ipress', has_ipress);
+    
+    // Guardar datos del usuario
+    localStorage.setItem('user', JSON.stringify({
+      id: user.id,
+      username: user.username,
+      email: user.email,
+      is_superuser: user.is_superuser,
+      is_staff: user.is_staff
+    }));
     
     // Guardar datos de IPRESS si existen
     if (ipress) {

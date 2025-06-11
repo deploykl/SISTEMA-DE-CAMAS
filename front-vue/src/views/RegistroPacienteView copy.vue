@@ -60,10 +60,16 @@
                             <option value="O">Otro</option>
                           </select>
                         </div>
-                        <input type="text" class="form-control" v-model="paciente.telefono"
-                          placeholder="Ingrese teléfono">
-                        <input type="text" class="form-control" v-model="paciente.direccion"
-                          placeholder="Ingrese dirección">
+                        <div class="col-md-6">
+                          <label class="form-label">Teléfono</label>
+                          <input type="text" class="form-control" v-model="paciente.telefono"
+                            placeholder="Ingrese teléfono">
+                        </div>
+                        <div class="col-md-12">
+                          <label class="form-label">Dirección</label>
+                          <input type="text" class="form-control" v-model="paciente.direccion"
+                            placeholder="Ingrese dirección">
+                        </div>
                       </div>
                       <div class="d-flex justify-content-end mt-3">
                         <button type="submit" class="btn btn-primary">
@@ -85,6 +91,24 @@
                       <div class="alert alert-info mb-4">
                         <i class="fas fa-info-circle me-2"></i>
                         Paciente seleccionado: <strong>{{ paciente.nombres }} {{ paciente.apellidos }}</strong>
+                      </div>
+
+                      <!-- Detalles del paciente encontrado -->
+                      <div class="mb-4">
+                        <h6 class="mb-3">Información del Paciente</h6>
+                        <div class="row">
+                          <div class="col-md-6">
+                            <p><strong>Documento:</strong> {{ paciente.documento_identidad }}</p>
+                            <p><strong>Fecha Nacimiento:</strong> {{ formatDate(paciente.fecha_nacimiento) }}</p>
+                          </div>
+                          <div class="col-md-6">
+                            <p><strong>Género:</strong> {{ formatGenero(paciente.genero) }}</p>
+                            <p><strong>Teléfono:</strong> {{ paciente.telefono || 'No registrado' }}</p>
+                          </div>
+                          <div class="col-12" v-if="paciente.direccion">
+                            <p><strong>Dirección:</strong> {{ paciente.direccion }}</p>
+                          </div>
+                        </div>
                       </div>
 
                       <div class="mb-3">
@@ -154,10 +178,10 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
-import { api } from '@/components/services/auth_axios'
+import { ref, onMounted, nextTick } from 'vue'  // Añade nextTick aquíimport { api } from '@/components/services/auth_axios'
 import { useToast } from 'vue-toast-notification'
 import 'vue-toast-notification/dist/theme-sugar.css'
+import { api } from '@/components/services/auth_axios'
 
 const toast = useToast()
 
@@ -189,106 +213,214 @@ const ingreso = ref({
   observaciones: ''
 })
 
-// Funciones
+// Función de validación de DNI/CE mejorada
+function validarDocumentoIdentidad(doc) {
+  if (!doc) return false
+  
+  // Eliminar espacios y caracteres no numéricos (excepto para CE que puede tener letras)
+  const limpio = doc.toString().trim().toUpperCase()
+  
+  // Validar DNI (8 dígitos)
+  if (/^\d{8}$/.test(limpio)) {
+    return true
+  }
+  
+  // Validar CE (Carné de Extranjería) - formato variado, normalmente letras y números
+  if (/^[A-Z0-9]{9,12}$/.test(limpio)) {
+    return true
+  }
+  
+  return false
+}
+
 async function searchPaciente() {
   try {
-    // Primero buscar coincidencia exacta
-    const exactMatch = await api.get(`pacientes/?documento_identidad=${documentoIdentidad.value}`);
-
-    if (exactMatch.data.length > 0) {
-      paciente.value = exactMatch.data[0];
-      showPacienteForm.value = false;
-      await fetchCamasDisponibles();
-      toast.success('Paciente encontrado', { position: 'top-right' });
-      return;
+    // Validar documento antes de proceder
+    if (!documentoIdentidad.value || !validarDocumentoIdentidad(documentoIdentidad.value)) {
+      toast.error('Ingrese un documento válido (DNI: 8 dígitos | CE: 9-12 caracteres alfanuméricos)', {
+        position: 'top-right',
+        duration: 5000
+      })
+      return
     }
 
-    // Si no hay coincidencia exacta, buscar parcial
-    const partialMatch = await api.get(`pacientes/search/?documento=${documentoIdentidad.value}`);
-
-    if (partialMatch.data.length > 0) {
-      paciente.value = partialMatch.data[0];
-      showPacienteForm.value = false;
-      await fetchCamasDisponibles();
-      toast.success('Paciente encontrado', { position: 'top-right' });
-    } else {
-      // Preparar nuevo registro
+    // Mostrar estado de carga
+    loading.value = true
+    
+    // Limpiar resultados anteriores
+    resetForms()
+    
+    // Asignar el documento al modelo (sin formato)
+    paciente.value.documento_identidad = documentoIdentidad.value.replace(/\D/g, '')
+    
+    // Buscar exactamente por documento
+    const response = await api.get(`pacientes/?documento_identidad=${paciente.value.documento_identidad}`)
+    
+    if (response.data.length > 0) {
+      // Mostrar el primer resultado (debería ser único por la unicidad del documento)
       paciente.value = {
-        id: null,
-        documento_identidad: documentoIdentidad.value,
+        ...response.data[0],
+        // Asegurar formato de fecha para el input date
+        fecha_nacimiento: response.data[0].fecha_nacimiento?.split('T')[0] || ''
+      }
+      
+      showPacienteForm.value = false
+      
+      // Cargar camas disponibles
+      await fetchCamasDisponibles()
+      
+      toast.success('Paciente encontrado', { position: 'top-right' })
+      
+      // Mover el foco a la sección de asignación de cama
+      nextTick(() => {
+        const camaSection = document.querySelector('.col-md-6 .card')
+        if (camaSection) {
+          camaSection.scrollIntoView({ behavior: 'smooth' })
+        }
+      })
+    } else {
+      // Preparar nuevo registro si no se encuentra
+      paciente.value = {
+        documento_identidad: paciente.value.documento_identidad,
         nombres: '',
         apellidos: '',
         fecha_nacimiento: '',
         genero: 'M',
         telefono: '',
         direccion: ''
-      };
-      showPacienteForm.value = true;
-      toast.info('Complete los datos para nuevo registro', { position: 'top-right' });
+      }
+      showPacienteForm.value = true
+      
+      toast.info('Documento no registrado. Complete los datos para nuevo registro', {
+        position: 'top-right',
+        duration: 4000
+      })
+      
+      // Enfocar el campo de nombres
+      nextTick(() => {
+        const nombresInput = document.querySelector('input[v-model="paciente.nombres"]')
+        if (nombresInput) {
+          nombresInput.focus()
+        }
+      })
     }
   } catch (error) {
-    console.error('Error en búsqueda:', error);
-    toast.error(`Error: ${error.response?.data?.detail || error.message}`, { position: 'top-right' });
+    console.error('Error en búsqueda:', error)
+    
+    let errorMessage = 'Error al buscar paciente'
+    if (error.response) {
+      if (error.response.data) {
+        if (typeof error.response.data === 'object') {
+          errorMessage = Object.entries(error.response.data)
+            .map(([key, value]) => `${key}: ${Array.isArray(value) ? value.join(', ') : value}`)
+            .join('; ')
+        } else {
+          errorMessage = error.response.data
+        }
+      }
+    } else {
+      errorMessage = error.message
+    }
+    
+    toast.error(errorMessage, {
+      position: 'top-right',
+      duration: 5000
+    })
+  } finally {
+    loading.value = false
   }
+}
+
+// Función para formatear documento (opcional, para mostrar mejor)
+function formatearDocumento(doc) {
+  if (!doc) return ''
+  
+  // DNI peruano: 8 dígitos
+  if (/^\d{8}$/.test(doc)) {
+    return doc
+  }
+  
+  // CE: mostrar con formato (ejemplo: ABC-12345)
+  if (/^[A-Z0-9]{9,12}$/.test(doc)) {
+    if (doc.length <= 3) return doc
+    return `${doc.substring(0, 3)}-${doc.substring(3)}`
+  }
+  
+  return doc
+}
+
+function formatDate(dateString) {
+  if (!dateString) return 'No registrado';
+  const date = new Date(dateString);
+  return date.toLocaleDateString('es-PE', { year: 'numeric', month: '2-digit', day: '2-digit' });
+}
+
+function formatGenero(genero) {
+  const generos = {
+    'M': 'Masculino',
+    'F': 'Femenino',
+    'O': 'Otro'
+  };
+  return generos[genero] || genero;
 }
 
 async function savePaciente() {
-  try {
-    let response;
-
-    // Primero verificar si el paciente ya existe
-    const checkResponse = await api.get(`pacientes/?documento_identidad=${paciente.value.documento_identidad}`);
-    if (checkResponse.data.length > 0 && !paciente.value.id) {
-      // Si existe, cargar sus datos
-      paciente.value = checkResponse.data[0];
-      toast.info('Paciente encontrado, se cargaron sus datos', { position: 'top-right' });
-      showPacienteForm.value = false;
-      await fetchCamasDisponibles();
-      return;
+    try {
+        let response;
+        
+        // Primero verificar si el paciente ya existe
+        const checkResponse = await api.get(`pacientes/?documento_identidad=${paciente.value.documento_identidad}`);
+        if (checkResponse.data.length > 0 && !paciente.value.id) {
+            // Si existe, cargar sus datos
+            paciente.value = checkResponse.data[0];
+            toast.info('Paciente encontrado, se cargaron sus datos', {position: 'top-right'});
+            showPacienteForm.value = false;
+            await fetchCamasDisponibles();
+            return;
+        }
+        
+        // Guardar o actualizar paciente
+        if (paciente.value.id) {
+            response = await api.put(`pacientes/${paciente.value.id}/`, paciente.value);
+            toast.success('Paciente actualizado', {position: 'top-right'});
+        } else {
+            response = await api.post('pacientes/', paciente.value);
+            paciente.value.id = response.data.id;
+            toast.success('Paciente registrado', {position: 'top-right'});
+        }
+        
+        // Si hay datos de ingreso, asignar cama
+        if (ingreso.value.diagnostico && ingreso.value.medico_tratante) {
+            await assignCamaAfterSave();
+        } else {
+            showPacienteForm.value = false;
+            await fetchCamasDisponibles();
+        }
+    } catch (error) {
+        console.error('Error:', error);
+        toast.error(`Error: ${error.response?.data?.detail || error.message}`, {position: 'top-right'});
     }
-
-    // Guardar o actualizar paciente
-    if (paciente.value.id) {
-      response = await api.put(`pacientes/${paciente.value.id}/`, paciente.value);
-      toast.success('Paciente actualizado', { position: 'top-right' });
-    } else {
-      response = await api.post('pacientes/', paciente.value);
-      paciente.value.id = response.data.id;
-      toast.success('Paciente registrado', { position: 'top-right' });
-    }
-
-    // Si hay datos de ingreso, asignar cama
-    if (ingreso.value.diagnostico && ingreso.value.medico_tratante) {
-      await assignCamaAfterSave();
-    } else {
-      showPacienteForm.value = false;
-      await fetchCamasDisponibles();
-    }
-  } catch (error) {
-    console.error('Error:', error);
-    toast.error(`Error: ${error.response?.data?.detail || error.message}`, { position: 'top-right' });
-  }
 }
 
 async function assignCamaAfterSave() {
-  if (!camasDisponibles.value.length) {
-    toast.warning('No hay camas disponibles', { position: 'top-right' });
-    return;
-  }
-
-  // Asignar primera cama disponible
-  const cama = camasDisponibles.value[0];
-  ingreso.value.paciente_id = paciente.value.id;
-  ingreso.value.cama_id = cama.id;
-
-  try {
-    await api.post('ingresos/', ingreso.value);
-    toast.success(`Cama ${cama.codcama} asignada`, { position: 'top-right' });
-    resetForms();
-  } catch (error) {
-    console.error('Error al asignar cama:', error);
-    toast.error(`Error al asignar cama: ${error.response?.data?.detail || error.message}`, { position: 'top-right' });
-  }
+    if (!camasDisponibles.value.length) {
+        toast.warning('No hay camas disponibles', {position: 'top-right'});
+        return;
+    }
+    
+    // Asignar primera cama disponible
+    const cama = camasDisponibles.value[0];
+    ingreso.value.paciente_id = paciente.value.id;
+    ingreso.value.cama_id = cama.id;
+    
+    try {
+        await api.post('ingresos/', ingreso.value);
+        toast.success(`Cama ${cama.codcama} asignada`, {position: 'top-right'});
+        resetForms();
+    } catch (error) {
+        console.error('Error al asignar cama:', error);
+        toast.error(`Error al asignar cama: ${error.response?.data?.detail || error.message}`, {position: 'top-right'});
+    }
 }
 
 async function fetchCamasDisponibles() {
@@ -331,17 +463,11 @@ function validateIngreso() {
 
 async function selectCama(cama) {
   if (!validateIngreso()) return;
-
+  
   if (confirm(`¿Confirmar asignación de cama ${cama.codcama} al paciente ${paciente.value.nombres} ${paciente.value.apellidos}?`)) {
     try {
       loading.value = true;
       selectedCamaId.value = cama.id;
-
-      // Obtener usuario del token directamente (mejor práctica)
-      const token = localStorage.getItem('auth_token');
-      if (!token) {
-        throw new Error('No se encontró el token de autenticación');
-      }
 
       const ingresoData = {
         paciente: paciente.value.id,
@@ -349,7 +475,6 @@ async function selectCama(cama) {
         diagnostico: ingreso.value.diagnostico,
         medico_tratante: ingreso.value.medico_tratante,
         observaciones: ingreso.value.observaciones || ''
-        // El backend debe obtener el usuario del token JWT
       };
 
       const response = await api.post('ingresos/', ingresoData);
@@ -358,12 +483,16 @@ async function selectCama(cama) {
       await fetchCamasDisponibles();
     } catch (error) {
       let errorMessage = 'Error al registrar ingreso';
-
+      
       if (error.response) {
         if (error.response.data) {
-          errorMessage = typeof error.response.data === 'object'
-            ? JSON.stringify(error.response.data)
-            : error.response.data;
+          if (typeof error.response.data === 'object') {
+            errorMessage = Object.entries(error.response.data)
+              .map(([key, value]) => `${key}: ${Array.isArray(value) ? value.join(', ') : value}`)
+              .join('; ');
+          } else {
+            errorMessage = error.response.data;
+          }
         }
       } else {
         errorMessage = error.message;
@@ -441,5 +570,25 @@ onMounted(() => {
 .btn:disabled {
   opacity: 0.7;
   cursor: not-allowed;
+}
+
+/* Estilos para la sección de información del paciente */
+.patient-info-section {
+  background-color: #f8f9fa;
+  border-radius: 0.5rem;
+  padding: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+.patient-info-section h6 {
+  color: #495057;
+  font-weight: 600;
+  border-bottom: 1px solid #dee2e6;
+  padding-bottom: 0.5rem;
+  margin-bottom: 1rem;
+}
+
+.patient-info-section p {
+  margin-bottom: 0.5rem;
 }
 </style>

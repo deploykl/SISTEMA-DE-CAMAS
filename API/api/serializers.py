@@ -23,7 +23,7 @@ class IpressSerializer(serializers.ModelSerializer):
         extra_kwargs = {
             'codigo': {'required': True},
             'descripcion': {'required': True},
-            'usuario': {'read_only': True}  # Asegúrate que el usuario sea requerido
+            'usuario': {'read_only': True}
         }
 
 class UPSViewSerializer(serializers.ModelSerializer):
@@ -36,7 +36,7 @@ class CamaSerializer(serializers.ModelSerializer):
         model = Cama
         fields = '__all__'
         extra_kwargs = {
-            'codcama': {'read_only': True},  # Hacemos que el código sea de solo lectura
+            'codcama': {'read_only': True},
             'tipocama': {'required': True},
             'servicio': {'required': True},
             'ups': {'required': True},
@@ -48,13 +48,11 @@ class CamaSerializer(serializers.ModelSerializer):
         servicio = validated_data['servicio']
         ipress = validated_data['ipress']
 
-        # Obtener todas las camas del mismo servicio en la misma IPRESS
         camas_existentes = Cama.objects.filter(
             servicio=servicio,
             ipress=ipress
         ).values_list('codcama', flat=True)
 
-        # Extraer números existentes
         numeros_existentes = []
         for codigo in camas_existentes:
             try:
@@ -63,17 +61,14 @@ class CamaSerializer(serializers.ModelSerializer):
             except (IndexError, ValueError):
                 continue
             
-        # Encontrar el siguiente número disponible
         siguiente_numero = 1
         if numeros_existentes:
             max_numero = max(numeros_existentes)
-            # Buscar el primer hueco disponible
             for i in range(1, max_numero + 2):
                 if i not in numeros_existentes:
                     siguiente_numero = i
                     break
                 
-        # Formatear el nuevo código
         nuevo_codigo = f"{servicio.prefijo}-{siguiente_numero:03d}"
         validated_data['codcama'] = nuevo_codigo
 
@@ -88,36 +83,49 @@ class CamaSerializer(serializers.ModelSerializer):
         representation['ipress'] = IpressSerializer(instance.ipress).data
         return representation
     
+# En tu archivo serializers.py
 class UserSerializer(serializers.ModelSerializer):
     has_ipress = serializers.SerializerMethodField()
+    ipress = serializers.SerializerMethodField()
 
     class Meta:
         model = User
-        fields = ['id', 'username', 'email', 'is_superuser', 'is_staff', 'has_ipress']
+        fields = ['id', 'username', 'email', 'is_superuser', 'is_staff', 'has_ipress', 'ipress']
 
     def get_has_ipress(self, obj):
         return Ipress.objects.filter(usuario=obj).exists()
-    
+
+    def get_ipress(self, obj):
+        ipress = Ipress.objects.filter(usuario=obj).first()
+        if ipress:
+            return IpressSerializer(ipress).data
+        return None
     
 class PacienteSerializer(serializers.ModelSerializer):
     class Meta:
         model = Paciente
         fields = '__all__'
+        extra_kwargs = {
+            'usuario': {'read_only': True}
+        }
 
-class OcupacionCamaSerializer(serializers.ModelSerializer):
-    paciente = PacienteSerializer()
-    cama = CamaSerializer()
+class IngresoSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Ingreso
+        fields = '__all__'
+        extra_kwargs = {
+            'paciente': {'required': True},
+            'cama': {'required': True},
+            'usuario': {'read_only': True},  # Cambiado a read_only
+            'diagnostico': {'required': True},
+            'medico_tratante': {'required': True},
+        }
+
+class CamaDisponibleSerializer(serializers.ModelSerializer):
+    tipocama = serializers.StringRelatedField()
+    servicio = serializers.StringRelatedField()
+    ups = serializers.StringRelatedField()
     
     class Meta:
-        model = OcupacionCama
-        fields = '__all__'
-        read_only_fields = ('fecha_ingreso', 'usuario_registro')
-
-class TransferenciaCamaSerializer(serializers.ModelSerializer):
-    ocupacion_origen = OcupacionCamaSerializer()
-    cama_destino = CamaSerializer()
-    
-    class Meta:
-        model = TransferenciaCama
-        fields = '__all__'
-        read_only_fields = ('fecha_transferencia', 'usuario')
+        model = Cama
+        fields = ['id', 'codcama', 'tipocama', 'servicio', 'ups']

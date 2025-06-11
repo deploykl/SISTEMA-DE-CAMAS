@@ -55,10 +55,11 @@ class Ipress(models.Model):
     codigo = models.CharField(max_length=255, unique=True, verbose_name="Código Ipress")  
     descripcion = models.CharField(max_length=255, unique=True, verbose_name="Descripción")  
     usuario = models.ForeignKey(
-        get_user_model(), 
+        User, 
         on_delete=models.CASCADE,
         related_name='ipress_registradas'
     )
+    
     class Meta:
         verbose_name = "Ipress"
         verbose_name_plural = "Ipress"
@@ -83,7 +84,6 @@ class Cama(models.Model):
         verbose_name = "Cama"
         verbose_name_plural = "Camas"
         ordering = ["codcama"]
-        # Asegurar que el código de cama sea único dentro de cada IPRESS
         unique_together = ('codcama', 'ipress')
 
     def __str__(self):
@@ -95,7 +95,10 @@ class Paciente(models.Model):
     nombres = models.CharField(max_length=100)
     apellidos = models.CharField(max_length=100)
     fecha_nacimiento = models.DateField()
-    genero = models.CharField(max_length=1, choices=[('M', 'Masculino'), ('F', 'Femenino')])
+    genero = models.CharField(max_length=1, choices=[('M', 'Masculino'), ('F', 'Femenino'), ('O', 'Otro')])
+    telefono = models.CharField(max_length=15, blank=True, null=True)
+    direccion = models.TextField(blank=True, null=True)
+    usuario = models.ForeignKey(User, on_delete=models.CASCADE, related_name='pacientes_registrados')
     
     class Meta:
         verbose_name = "Paciente"
@@ -103,38 +106,38 @@ class Paciente(models.Model):
         ordering = ["apellidos", "nombres"]
 
     def __str__(self):
-        return f"{self.apellidos}, {self.nombres}"
+        return f"{self.apellidos}, {self.nombres} ({self.documento_identidad})"
     
-class OcupacionCama(models.Model):
-    id = models.AutoField(primary_key=True, verbose_name="IdOcupacion")
-    cama = models.ForeignKey(Cama, on_delete=models.CASCADE, related_name='ocupaciones')
-    paciente = models.ForeignKey(Paciente, on_delete=models.CASCADE, related_name='ocupaciones_camas')
-    fecha_ingreso = models.DateTimeField(auto_now_add=True)
-    fecha_salida = models.DateTimeField(null=True, blank=True)
-    motivo_ingreso = models.TextField()
-    motivo_salida = models.TextField(null=True, blank=True)
-    usuario_registro = models.ForeignKey(User, on_delete=models.SET_NULL, null=True)
+class Ingreso(models.Model):
+    id = models.AutoField(primary_key=True, verbose_name="IdIngreso")
+    paciente = models.ForeignKey(Paciente, on_delete=models.CASCADE, related_name='ingresos')
+    cama = models.ForeignKey(Cama, on_delete=models.CASCADE, related_name='ingresos')
+    fecha_ingreso = models.DateTimeField(auto_now_add=True, verbose_name="Fecha de Ingreso")
+    fecha_alta = models.DateTimeField(blank=True, null=True, verbose_name="Fecha de Alta")
+    diagnostico = models.TextField(verbose_name="Diagnóstico Principal")
+    medico_tratante = models.CharField(max_length=255, verbose_name="Médico Tratante")
+    observaciones = models.TextField(blank=True, null=True, verbose_name="Observaciones")
+    usuario = models.ForeignKey(User, on_delete=models.CASCADE, related_name='ingresos_registrados')
     
     class Meta:
-        verbose_name = "Ocupación de Cama"
-        verbose_name_plural = "Ocupaciones de Camas"
+        verbose_name = "Ingreso"
+        verbose_name_plural = "Ingresos"
         ordering = ["-fecha_ingreso"]
 
     def __str__(self):
-        return f"{self.paciente} en {self.cama}"
-    
-class TransferenciaCama(models.Model):
-    id = models.AutoField(primary_key=True, verbose_name="IdTransferencia")
-    ocupacion_origen = models.ForeignKey(OcupacionCama, on_delete=models.CASCADE, related_name='transferencias_origen')
-    cama_destino = models.ForeignKey(Cama, on_delete=models.CASCADE, related_name='transferencias_recibidas')
-    fecha_transferencia = models.DateTimeField(auto_now_add=True)
-    motivo = models.TextField()
-    usuario = models.ForeignKey(User, on_delete=models.SET_NULL, null=True)
-    
-    class Meta:
-        verbose_name = "Transferencia de Cama"
-        verbose_name_plural = "Transferencias de Camas"
-        ordering = ["-fecha_transferencia"]
+        return f"Ingreso {self.id} - {self.paciente}"
 
-    def __str__(self):
-        return f"Transferencia de {self.ocupacion_origen.cama} a {self.cama_destino}"
+    def save(self, *args, **kwargs):
+        # Al crear un ingreso, actualizar el estado de la cama a "Ocupado"
+        if not self.pk:  # Solo si es un nuevo ingreso
+            estado_ocupado = EstadoCama.objects.get(descripcion__icontains='Ocupada')
+            self.cama.estado = estado_ocupado
+            self.cama.save()
+        super().save(*args, **kwargs)
+
+    def delete(self, *args, **kwargs):
+        # Al dar de alta, actualizar el estado de la cama a "Disponible"
+        estado_disponible = EstadoCama.objects.get(descripcion__icontains='Disponible')
+        self.cama.estado = estado_disponible
+        self.cama.save()
+        super().delete(*args, **kwargs)

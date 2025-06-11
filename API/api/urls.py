@@ -3,6 +3,8 @@ from drf_spectacular.views import SpectacularAPIView, SpectacularSwaggerView  # 
 from rest_framework.routers import DefaultRouter
 from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView, TokenVerifyView, TokenBlacklistView  # type: ignore
 from api.views import *  # Importar las ViewSets
+from .views import PacienteViewSet, IngresoViewSet
+from api import views
 
 app_name = "api"
 
@@ -15,9 +17,8 @@ router.register(r'ups', UPSViewSet)
 router.register(r'servicio', ServicioViewSet)
 router.register(r'ipress', IpressViewSet)
 router.register(r'cama', CamaViewSet, basename='cama')  # Nueva ruta para camas
-router.register(r'paciente', PacienteViewSet)  # Ruta para pacientes
-router.register(r'ocupacion-cama', OcupacionCamaViewSet)  # Ruta para ocupaciones de camas
-router.register(r'transferencia-cama', TransferenciaCamaViewSet)  # Ruta para transferencias de camas
+router.register(r'pacientes', PacienteViewSet) 
+router.register(r'ingresos', IngresoViewSet, basename='ingreso')
 
 urlpatterns = [
     path('token/', TokenObtainPairView.as_view(), name="token_obtain_pair"),
@@ -27,6 +28,7 @@ urlpatterns = [
     
     path('login/', LoginView.as_view(), name='login'),
     path('logout/', LogoutView.as_view(), name='logout'),
-    
+    path('camas/disponibles/', views.CamaDisponibleList.as_view(), name='camas-disponibles'),
+
     path('', include(router.urls)),  # Incluye todas las rutas registradas en el router
 ]
