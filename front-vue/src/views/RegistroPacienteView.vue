@@ -25,12 +25,13 @@
                       <div class="mb-3">
                         <label class="form-label">Documento de Identidad</label>
                         <div class="input-group">
-                          <input type="text" class="form-control" v-model="documentoIdentidad"
-                            placeholder="Ingrese DNI/CE" maxlength="8" @input="validateDocumento" required>
+                          <input type="text" class="form-control" v-model="documentoIdentidad" placeholder="Ingrese DNI"
+                            maxlength="8" @input="validateDocumento" required>
                           <button class="btn btn-primary" type="submit">
                             <i class="fas fa-search me-2"></i> Buscar
                           </button>
                         </div>
+                        <small class="text-muted">Ingrese solo números (8 dígitos)</small>
                       </div>
                     </form>
 
@@ -46,7 +47,9 @@
                         </div>
                         <div class="col-md-6">
                           <label class="form-label">Documento Identidad <span class="text-danger">*</span></label>
-                          <input type="text" class="form-control" v-model="paciente.documento_identidad" required>
+                          <input type="text" class="form-control" v-model="paciente.documento_identidad" maxlength="8"
+                            @input="validatePacienteDocumento" required>
+                          <small class="text-muted">Solo números (8 dígitos)</small>
                         </div>
                         <div class="col-md-6">
                           <label class="form-label">Fecha Nacimiento <span class="text-danger">*</span></label>
@@ -60,10 +63,17 @@
                             <option value="O">Otro</option>
                           </select>
                         </div>
-                        <input type="text" class="form-control" v-model="paciente.telefono"
-                          placeholder="Ingrese teléfono">
-                        <input type="text" class="form-control" v-model="paciente.direccion"
-                          placeholder="Ingrese dirección">
+                        <div class="col-md-6">
+                          <label class="form-label">Teléfono</label>
+                          <input type="text" class="form-control" v-model="paciente.telefono" @input="validateTelefono"
+                            placeholder="Ingrese teléfono (9 dígitos)" maxlength="9">
+                          <small class="text-muted">Ingrese solo números (9 dígitos)</small>
+                        </div>
+                        <div class="col-12">
+                          <label class="form-label">Dirección</label>
+                          <input type="text" class="form-control" v-model="paciente.direccion"
+                            placeholder="Ingrese dirección">
+                        </div>
                       </div>
                       <div class="d-flex justify-content-end mt-3">
                         <button type="submit" class="btn btn-primary">
@@ -87,8 +97,6 @@
                         Paciente seleccionado: <strong>{{ paciente.nombres }} {{ paciente.apellidos }}</strong>
                       </div>
 
-                      <!-- Mostrar datos de ingreso si el paciente ya tiene uno activo -->
-                      <!-- Mostrar datos de ingreso si el paciente ya tiene uno activo -->
                       <div v-if="ingresoExistente" class="mb-4">
                         <h6 class="fw-bold mb-3">Datos de Ingreso Actual</h6>
                         <div class="mb-2">
@@ -121,7 +129,6 @@
                         </div>
                       </div>
 
-                      <!-- Mostrar formulario de ingreso solo si no hay ingreso existente -->
                       <div v-else>
                         <div class="mb-3">
                           <label class="form-label">Diagnóstico Principal <span class="text-danger">*</span></label>
@@ -243,8 +250,34 @@ function formatDateTime(dateTimeString) {
   });
 }
 
+function validateDocumento() {
+  // Elimina cualquier carácter que no sea número
+  documentoIdentidad.value = documentoIdentidad.value.replace(/\D/g, '');
+
+  // Limita a 8 caracteres
+  if (documentoIdentidad.value.length > 8) {
+    documentoIdentidad.value = documentoIdentidad.value.slice(0, 8);
+  }
+}
+
+function validatePacienteDocumento() {
+  // Elimina cualquier carácter que no sea número
+  paciente.value.documento_identidad = paciente.value.documento_identidad.replace(/\D/g, '');
+
+  // Limita a 8 caracteres
+  if (paciente.value.documento_identidad.length > 8) {
+    paciente.value.documento_identidad = paciente.value.documento_identidad.slice(0, 8);
+  }
+}
+
 async function searchPaciente() {
   try {
+    // Validar que el documento tenga exactamente 8 dígitos
+    if (documentoIdentidad.value.length !== 8 || !/^\d+$/.test(documentoIdentidad.value)) {
+      toast.error('El documento debe tener exactamente 8 dígitos numéricos', { position: 'top-right' });
+      return;
+    }
+
     // Primero buscar coincidencia exacta
     const exactMatch = await api.get(`pacientes/?documento_identidad=${documentoIdentidad.value}`);
 
@@ -317,28 +350,32 @@ async function checkIngresoExistente(pacienteId) {
     ingresoExistente.value = null;
   }
 }
-function validateDocumento(event) {
-  // Elimina cualquier carácter que no sea número
-  documentoIdentidad.value = documentoIdentidad.value.replace(/\D/g, '');
-  
-  // Limita a 8 caracteres (por si acaso el maxlength no funciona)
-  if (documentoIdentidad.value.length > 8) {
-    documentoIdentidad.value = documentoIdentidad.value.slice(0, 8);
-  }
-}
-
-function validatePacienteDocumento() {
-  // Elimina cualquier carácter que no sea número
-  paciente.value.documento_identidad = paciente.value.documento_identidad.replace(/\D/g, '');
-  
-  // Limita a 8 caracteres
-  if (paciente.value.documento_identidad.length > 8) {
-    paciente.value.documento_identidad = paciente.value.documento_identidad.slice(0, 8);
-  }
-}
 
 async function savePaciente() {
   try {
+    // Validar documento antes de guardar
+    if (paciente.value.documento_identidad.length !== 8 || !/^\d+$/.test(paciente.value.documento_identidad)) {
+      toast.error('El documento debe tener exactamente 8 dígitos numéricos', { position: 'top-right' });
+      return;
+    }
+
+    // Validar teléfono si se ha ingresado
+    if (paciente.value.telefono && (paciente.value.telefono.length > 9 || !/^\d+$/.test(paciente.value.telefono))) {
+      toast.error('El teléfono debe tener máximo 9 dígitos numéricos', { position: 'top-right' });
+      return;
+    }
+
+    // Validar campos obligatorios
+    if (!paciente.value.nombres?.trim() || !paciente.value.apellidos?.trim()) {
+      toast.error('Nombres y apellidos son campos obligatorios', { position: 'top-right' });
+      return;
+    }
+
+    if (!paciente.value.fecha_nacimiento) {
+      toast.error('La fecha de nacimiento es obligatoria', { position: 'top-right' });
+      return;
+    }
+
     let response;
 
     // Primero verificar si el paciente ya existe
@@ -378,7 +415,25 @@ async function savePaciente() {
     }
   } catch (error) {
     console.error('Error:', error);
-    toast.error(`Error: ${error.response?.data?.detail || error.message}`, { position: 'top-right' });
+    
+    // Manejo de errores más detallado
+    let errorMessage = 'Error al guardar paciente';
+    if (error.response) {
+      if (error.response.data) {
+        if (typeof error.response.data === 'object') {
+          // Si el error es un objeto (como de Django REST framework)
+          errorMessage = Object.entries(error.response.data)
+            .map(([key, value]) => `${key}: ${Array.isArray(value) ? value.join(', ') : value}`)
+            .join('; ');
+        } else {
+          errorMessage = error.response.data;
+        }
+      }
+    } else {
+      errorMessage = error.message;
+    }
+    
+    toast.error(errorMessage, { position: 'top-right', duration: 5000 });
   }
 }
 
@@ -485,7 +540,15 @@ async function selectCama(cama) {
     }
   }
 }
+function validateTelefono() {
+  // Elimina cualquier carácter que no sea número
+  paciente.value.telefono = paciente.value.telefono.replace(/\D/g, '');
 
+  // Limita a 9 caracteres
+  if (paciente.value.telefono.length > 9) {
+    paciente.value.telefono = paciente.value.telefono.slice(0, 9);
+  }
+}
 function resetForms() {
   documentoIdentidad.value = ''
   paciente.value = {

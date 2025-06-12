@@ -4,8 +4,8 @@ import NotFoundView from '../views/NotFoundView.vue';
 import LoginView from '../views/login/LoginView.vue';
 import IpressRegister from '../views/IpressRegister.vue'; // Importa el nuevo componente
 import CamasStock from '../views/CamasStock.vue'; // Importa el componente de gestión de camas
-import TransferenciaCama from '../views/TransferenciaCama.vue'; // Importa el componente de gestión de camas
 import RegistroPacienteView from '../views/RegistroPacienteView.vue'; // Importa el componente de gestión de camas
+import CamasPacienteView from "@/views/CamasPacienteView.vue";
 
 const routes = [
   {
@@ -36,11 +36,11 @@ const routes = [
     },
   },
     {
-    path: '/transferencia',
-    name: 'transferencia',
-    component: TransferenciaCama,
+    path: '/cama-paciente',
+    name: 'cama-paciente',
+    component: CamasPacienteView,
     meta: {
-      title: 'Transferencias de Camas',
+      title: 'Camas Paciente',
       requiresAuth: true,
     },
   },
