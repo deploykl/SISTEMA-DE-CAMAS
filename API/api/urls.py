@@ -28,7 +28,7 @@ urlpatterns = [
     
     path('login/', LoginView.as_view(), name='login'),
     path('logout/', LogoutView.as_view(), name='logout'),
-    path('camas/disponibles/', views.CamaDisponibleList.as_view(), name='camas-disponibles'),
+    path('camas/disponibles/', CamaDisponibleList.as_view(), name='camas-disponibles'),
 
     path('', include(router.urls)),  # Incluye todas las rutas registradas en el router
 ]

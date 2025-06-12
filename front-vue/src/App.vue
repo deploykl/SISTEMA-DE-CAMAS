@@ -15,10 +15,13 @@
               <router-link to="/" class="nav-link" active-class="active">Inicio</router-link>
             </li>
             <li v-if="isAuthenticated && hasIpress" class="nav-item">
-              <router-link to="/camas" class="nav-link" active-class="active">Mis Camas</router-link>
+              <router-link to="/camas" class="nav-link" active-class="active">Stock de Camas</router-link>
             </li>
              <li v-if="isAuthenticated && hasIpress" class="nav-item">
               <router-link to="/paciente" class="nav-link" active-class="active">Pacientes</router-link>
+            </li>
+             <li v-if="isAuthenticated && hasIpress" class="nav-item">
+              <router-link to="/cama-paciente" class="nav-link" active-class="active">Lista de camas</router-link>
             </li>
             <li v-if="isAdmin" class="nav-item">
               <router-link to="/admin" class="nav-link" active-class="active">Admin</router-link>

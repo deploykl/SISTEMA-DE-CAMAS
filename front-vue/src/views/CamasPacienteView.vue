@@ -3,173 +3,281 @@
     <div class="row">
       <div class="col-md-12">
         <div class="card shadow-lg border-0">
-          <div class="card-header bg-gradient-info text-white d-flex justify-content-between align-items-center">
+          <div class="card-header bg-gradient-primary text-white">
             <div class="d-flex align-items-center">
-              <i class="fas fa-user-injured fa-2x me-3"></i>
+              <i class="fas fa-procedures fa-2x me-3"></i>
               <div>
-                <h4 class="mb-0">Registro de Pacientes</h4>
+                <h4 class="mb-0">Distribución de Camas por UPS</h4>
                 <small class="opacity-75">{{ ipressName || 'Cargando establecimiento...' }}</small>
               </div>
             </div>
           </div>
 
           <div class="card-body">
-            <div class="row">
-              <div class="col-md-6">
-                <div class="card mb-4">
-                  <div class="card-header bg-light">
-                    <h5 class="mb-0">Datos del Paciente</h5>
+            <!-- Vista de Camas por UPS -->
+            <div v-if="camas.length > 0" class="ups-container">
+              <div v-for="ups in groupedCamas" :key="ups.id" class="ups-section mb-5">
+                <div class="ups-header d-flex align-items-center mb-4">
+                  <div class="ups-icon me-3">
+                    <i class="fas fa-hospital fa-2x text-primary"></i>
                   </div>
-                  <div class="card-body">
-                    <form @submit.prevent="searchPaciente">
-                      <div class="mb-3">
-                        <label class="form-label">Documento de Identidad</label>
-                        <div class="input-group">
-                          <input type="text" class="form-control" v-model="documentoIdentidad"
-                            placeholder="Ingrese DNI/CE" required>
-                          <button class="btn btn-primary" type="submit">
-                            <i class="fas fa-search me-2"></i> Buscar
-                          </button>
-                        </div>
-                      </div>
-                    </form>
-
-                    <form @submit.prevent="savePaciente" v-if="showPacienteForm">
-                      <div class="row g-3">
-                        <div class="col-md-6">
-                          <label class="form-label">Nombres <span class="text-danger">*</span></label>
-                          <input type="text" class="form-control" v-model="paciente.nombres" required>
-                        </div>
-                        <div class="col-md-6">
-                          <label class="form-label">Apellidos <span class="text-danger">*</span></label>
-                          <input type="text" class="form-control" v-model="paciente.apellidos" required>
-                        </div>
-                        <div class="col-md-6">
-                          <label class="form-label">Documento Identidad <span class="text-danger">*</span></label>
-                          <input type="text" class="form-control" v-model="paciente.documento_identidad" required>
-                        </div>
-                        <div class="col-md-6">
-                          <label class="form-label">Fecha Nacimiento <span class="text-danger">*</span></label>
-                          <input type="date" class="form-control" v-model="paciente.fecha_nacimiento" required>
-                        </div>
-                        <div class="col-md-6">
-                          <label class="form-label">Género <span class="text-danger">*</span></label>
-                          <select class="form-select" v-model="paciente.genero" required>
-                            <option value="M">Masculino</option>
-                            <option value="F">Femenino</option>
-                            <option value="O">Otro</option>
-                          </select>
-                        </div>
-                        <div class="col-md-6">
-                          <label class="form-label">Teléfono</label>
-                          <input type="text" class="form-control" v-model="paciente.telefono"
-                            placeholder="Ingrese teléfono">
-                        </div>
-                        <div class="col-md-12">
-                          <label class="form-label">Dirección</label>
-                          <input type="text" class="form-control" v-model="paciente.direccion"
-                            placeholder="Ingrese dirección">
-                        </div>
-                      </div>
-                      <div class="d-flex justify-content-end mt-3">
-                        <button type="submit" class="btn btn-primary">
-                          <i class="fas fa-save me-2"></i> Guardar Paciente
-                        </button>
-                      </div>
-                    </form>
+                  <div>
+                    <h4 class="mb-0">{{ ups.nombre }}</h4>
+                    <small class="text-muted">
+                      {{ ups.totalDisponibles }} camas disponibles de {{ ups.totalCamas }}
+                    </small>
                   </div>
                 </div>
-              </div>
 
-              <div class="col-md-6">
-                <div class="card">
-                  <div class="card-header bg-light">
-                    <h5 class="mb-0">Asignación de Cama</h5>
-                  </div>
-                  <div class="card-body">
-                    <div v-if="paciente.id">
-                      <div class="alert alert-info mb-4">
-                        <i class="fas fa-info-circle me-2"></i>
-                        Paciente seleccionado: <strong>{{ paciente.nombres }} {{ paciente.apellidos }}</strong>
-                      </div>
+                <div class="servicios-container">
+                  <div v-for="servicio in ups.servicios" :key="servicio.id" class="servicio-section mb-4">
+                    <h5 class="servicio-title mb-3">
+                      <i class="fas fa-clinic-medical me-2"></i> {{ servicio.nombre }}
+                      <span class="badge bg-secondary ms-2">{{ servicio.camas.length }}</span>
+                    </h5>
 
-                      <!-- Detalles del paciente encontrado -->
-                      <div class="mb-4">
-                        <h6 class="mb-3">Información del Paciente</h6>
-                        <div class="row">
-                          <div class="col-md-6">
-                            <p><strong>Documento:</strong> {{ paciente.documento_identidad }}</p>
-                            <p><strong>Fecha Nacimiento:</strong> {{ formatDate(paciente.fecha_nacimiento) }}</p>
+                    <div class="camas-grid">
+                      <div v-for="cama in servicio.camas" :key="cama.id" class="cama-item">
+                        <div class="cama-card" :class="{
+                          'available': cama.estado.descripcion === 'Disponible',
+                          'occupied': cama.estado.descripcion !== 'Disponible'
+                        }" @click="cama.estado.descripcion !== 'Disponible' ? showCamaDetails(cama) : null">
+                          <div class="cama-icon">
+                            <i class="fas fa-bed"></i>
                           </div>
-                          <div class="col-md-6">
-                            <p><strong>Género:</strong> {{ formatGenero(paciente.genero) }}</p>
-                            <p><strong>Teléfono:</strong> {{ paciente.telefono || 'No registrado' }}</p>
-                          </div>
-                          <div class="col-12" v-if="paciente.direccion">
-                            <p><strong>Dirección:</strong> {{ paciente.direccion }}</p>
+                          <div class="cama-info">
+                            <div class="cama-codigo">{{ cama.codcama }}</div>
+                            <div class="cama-tipo">{{ cama.tipocama.descripcion }}</div>
+                            <div v-if="cama.estado.descripcion === 'Disponible'" class="cama-status available">
+                              Disponible
+                            </div>
+                            <div v-else class="cama-status occupied">
+                              Ocupada
+                            </div>
                           </div>
                         </div>
                       </div>
-
-                      <div class="mb-3">
-                        <label class="form-label">Diagnóstico Principal <span class="text-danger">*</span></label>
-                        <textarea class="form-control" v-model="ingreso.diagnostico" required></textarea>
-                      </div>
-
-                      <div class="mb-3">
-                        <label class="form-label">Médico Tratante <span class="text-danger">*</span></label>
-                        <input type="text" class="form-control" v-model="ingreso.medico_tratante" required>
-                      </div>
-
-                      <div class="mb-4">
-                        <label class="form-label">Observaciones</label>
-                        <textarea class="form-control" v-model="ingreso.observaciones"></textarea>
-                      </div>
-
-                      <div class="mb-4">
-                        <label class="form-label">Seleccionar Cama Disponible <span class="text-danger">*</span></label>
-                        <div class="table-responsive">
-                          <table class="table table-sm table-hover">
-                            <thead>
-                              <tr>
-                                <th>Código</th>
-                                <th>Tipo</th>
-                                <th>Servicio</th>
-                                <th>UPS</th>
-                                <th>Acción</th>
-                              </tr>
-                            </thead>
-                            <tbody>
-                              <tr v-for="cama in camasDisponibles" :key="cama.id">
-                                <td>{{ cama.codcama }}</td>
-                                <td>{{ cama.tipocama.descripcion }}</td>
-                                <td>{{ cama.servicio.nombre }}</td>
-                                <td>{{ cama.ups.nombre }}</td>
-                                <td>
-                                  <button class="btn btn-sm btn-primary" @click="selectCama(cama)" :disabled="loading">
-                                    <i class="fas fa-bed me-1"></i>
-                                    {{ loading && selectedCamaId === cama.id ? 'Asignando...' : 'Asignar' }}
-                                  </button>
-                                </td>
-                              </tr>
-                              <tr v-if="camasDisponibles.length === 0">
-                                <td colspan="5" class="text-center text-muted py-3">
-                                  No hay camas disponibles en este momento
-                                </td>
-                              </tr>
-                            </tbody>
-                          </table>
-                        </div>
-                      </div>
-                    </div>
-                    <div v-else class="text-center text-muted py-4">
-                      <i class="fas fa-user-clock fa-2x mb-3"></i>
-                      <p>Primero busque o registre un paciente</p>
                     </div>
                   </div>
                 </div>
               </div>
             </div>
+
+            <div v-else class="text-center py-5">
+              <i class="fas fa-bed fa-4x text-muted mb-3"></i>
+              <h5 class="text-muted">No hay camas registradas en este establecimiento</h5>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Modal de Detalles de Cama -->
+    <div class="modal fade" id="camaModal" tabindex="-1" aria-hidden="true">
+      <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+          <div class="modal-header" :class="{
+            'bg-success': selectedCama?.estado.descripcion === 'Disponible',
+            'bg-danger': selectedCama?.estado.descripcion !== 'Disponible'
+          }">
+            <h5 class="modal-title text-white">
+              <i class="fas fa-bed me-2"></i> Cama {{ selectedCama?.codcama }}
+              <span class="badge bg-light text-dark ms-2">{{ selectedCama?.estado.descripcion }}</span>
+            </h5>
+            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+          </div>
+          <div class="modal-body">
+            <div v-if="selectedCama">
+              <div class="row">
+                <!-- Información de la cama -->
+                <div class="col-md-6">
+                  <div class="card mb-4">
+                    <div class="card-header bg-light">
+                      <h6 class="mb-0"><i class="fas fa-info-circle me-2"></i>Información de la Cama</h6>
+                    </div>
+                    <div class="card-body">
+                      <div class="mb-3">
+                        <label class="form-label fw-bold">UPS:</label>
+                        <p class="form-control-plaintext">{{ selectedCama.ups.nombre }}</p>
+                      </div>
+                      <div class="mb-3">
+                        <label class="form-label fw-bold">Servicio:</label>
+                        <p class="form-control-plaintext">{{ selectedCama.servicio.nombre }}</p>
+                      </div>
+                      <div class="mb-3">
+                        <label class="form-label fw-bold">Tipo de Cama:</label>
+                        <p class="form-control-plaintext">{{ selectedCama.tipocama.descripcion }}</p>
+                      </div>
+                      <div class="mb-3">
+                        <label class="form-label fw-bold">Estado:</label>
+                        <p class="form-control-plaintext">
+                          <span :class="{
+                            'badge bg-success': selectedCama.estado.descripcion === 'Disponible',
+                            'badge bg-danger': selectedCama.estado.descripcion !== 'Disponible'
+                          }">
+                            {{ selectedCama.estado.descripcion }}
+                          </span>
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Información del paciente (si está ocupada) -->
+                <div class="col-md-6" v-if="selectedCama.estado.descripcion !== 'Disponible' && selectedCama.ingreso">
+                  <div class="card">
+                    <div class="card-header bg-light">
+                      <h6 class="mb-0"><i class="fas fa-user-injured me-2"></i>Paciente Ocupante</h6>
+                    </div>
+                    <div class="card-body">
+                      <div class="d-flex align-items-start mb-4">
+                        <div class="avatar me-3">
+                          <i class="fas fa-user-circle fa-3x text-primary"></i>
+                        </div>
+                        <div>
+                          <h5>{{ selectedCama.ingreso.paciente.nombres }} {{ selectedCama.ingreso.paciente.apellidos }}
+                          </h5>
+                          <p class="text-muted mb-1">
+                            <i class="fas fa-id-card me-1"></i> DNI: {{ selectedCama.ingreso.paciente.documento }}
+                          </p>
+                          <p class="text-muted mb-1">
+                            <i class="fas fa-venus-mars me-1"></i>
+                            Género: {{ formatGender(selectedCama.ingreso.paciente.genero) }}
+                          </p>
+                          <p class="text-muted mb-1">
+                            <i class="fas fa-birthday-cake me-1"></i>
+                            Edad: {{ calculateAge(selectedCama.ingreso.paciente.fecha_nacimiento) }}
+                          </p>
+                          <p class="text-muted mb-1" v-if="selectedCama.ingreso.paciente.telefono">
+                            <i class="fas fa-phone me-1"></i>
+                            Teléfono: {{ selectedCama.ingreso.paciente.telefono }}
+                          </p>
+                          <p class="text-muted mb-1" v-if="selectedCama.ingreso.paciente.direccion">
+                            <i class="fas fa-map-marker-alt me-1"></i>
+                            Dirección: {{ selectedCama.ingreso.paciente.direccion }}
+                          </p>
+                        </div>
+                      </div>
+
+                      <div class="row">
+                        <div class="col-md-6">
+                          <div class="mb-3">
+                            <label class="form-label fw-bold">Fecha de Ingreso:</label>
+                            <p class="form-control-plaintext">{{ formatDateTime(selectedCama.ingreso.fecha_ingreso) }}
+                            </p>
+                          </div>
+                          <div class="mb-3">
+                            <label class="form-label fw-bold">Tiempo de Ocupación:</label>
+                            <p class="form-control-plaintext">{{ calculateTimeSince(selectedCama.ingreso.fecha_ingreso)
+                            }}</p>
+                          </div>
+                        </div>
+                        <div class="col-md-6">
+                          <div class="mb-3">
+                            <label class="form-label fw-bold">Médico Tratante:</label>
+                            <p class="form-control-plaintext">{{ selectedCama.ingreso.medico_tratante }}</p>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div class="mb-3">
+                        <label class="form-label fw-bold">Diagnóstico:</label>
+                        <p class="form-control-plaintext">{{ selectedCama.ingreso.diagnostico }}</p>
+                      </div>
+
+                      <div class="mb-3" v-if="selectedCama.ingreso.observaciones">
+                        <label class="form-label fw-bold">Observaciones:</label>
+                        <p class="form-control-plaintext">{{ selectedCama.ingreso.observaciones }}</p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+              <i class="fas fa-times me-1"></i> Cerrar
+            </button>
+            <button v-if="selectedCama?.estado.descripcion !== 'Disponible'" 
+                    type="button" 
+                    class="btn btn-primary"
+                    @click="iniciarTransferencia">
+              <i class="fas fa-exchange-alt me-1"></i> Transferir Paciente
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Modal para Transferencia -->
+    <div class="modal fade" id="transferModal" tabindex="-1" aria-hidden="true">
+      <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+          <div class="modal-header bg-primary text-white">
+            <h5 class="modal-title">
+              <i class="fas fa-exchange-alt me-2"></i> Transferir Paciente
+            </h5>
+            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+          </div>
+          <div class="modal-body">
+            <div v-if="selectedCama">
+              <div class="alert alert-info">
+                <i class="fas fa-info-circle me-2"></i>
+                Transferir a <strong>{{ selectedCama.ingreso.paciente.nombres }} {{ selectedCama.ingreso.paciente.apellidos }}</strong>
+                (DNI: {{ selectedCama.ingreso.paciente.documento }}) a una nueva cama
+              </div>
+              
+              <div class="mb-4">
+                <label class="form-label fw-bold">Filtrar por:</label>
+                <div class="d-flex gap-3">
+                  <select v-model="filtroUps" class="form-select">
+                    <option value="">Todas las UPS</option>
+                    <option v-for="ups in upss" :value="ups.id">{{ ups.nombre }}</option>
+                  </select>
+                  <select v-model="filtroServicio" class="form-select">
+                    <option value="">Todos los Servicios</option>
+                    <option v-for="servicio in servicios" :value="servicio.id">{{ servicio.nombre }}</option>
+                  </select>
+                </div>
+              </div>
+              
+              <div class="camas-disponibles">
+                <h6 class="mb-3">Camas Disponibles</h6>
+                
+                <div v-if="camasDisponibles.length === 0" class="alert alert-warning">
+                  No hay camas disponibles con los filtros seleccionados
+                </div>
+                
+                <div class="row">
+                  <div v-for="cama in camasDisponiblesFiltradas" 
+                       :key="cama.id" 
+                       class="col-md-4 mb-3"
+                       @click="seleccionarCama(cama)">
+                    <div class="card h-100" :class="{ 'border-primary': camaSeleccionada?.id === cama.id }">
+                      <div class="card-body text-center">
+                        <h5>{{ cama.codcama }}</h5>
+                        <div class="text-muted">{{ cama.ups.nombre }}</div>
+                        <div class="text-muted">{{ cama.servicio.nombre }}</div>
+                        <div class="text-muted">{{ cama.tipocama.descripcion }}</div>
+                        <div class="badge bg-success mt-2">Disponible</div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+              <i class="fas fa-times me-1"></i> Cancelar
+            </button>
+            <button type="button" 
+                    class="btn btn-primary" 
+                    :disabled="!camaSeleccionada"
+                    @click="confirmarTransferencia">
+              <i class="fas fa-check me-1"></i> Confirmar Transferencia
+            </button>
           </div>
         </div>
       </div>
@@ -178,417 +286,453 @@
 </template>
 
 <script setup>
-import { ref, onMounted, nextTick } from 'vue'  // Añade nextTick aquíimport { api } from '@/components/services/auth_axios'
-import { useToast } from 'vue-toast-notification'
-import 'vue-toast-notification/dist/theme-sugar.css'
+import { ref, onMounted, computed } from 'vue'
 import { api } from '@/components/services/auth_axios'
+import { useToast } from 'vue-toast-notification'
+import { Modal } from 'bootstrap'
+import 'vue-toast-notification/dist/theme-sugar.css'
 
 const toast = useToast()
 
-// Datos
+// Datos principales
 const ipressName = ref('')
-const documentoIdentidad = ref('')
-const showPacienteForm = ref(false)
+const camas = ref([])
+const selectedCama = ref(null)
+const camaModal = ref(null)
+const transferModal = ref(null)
+
+// Datos para transferencia
 const camasDisponibles = ref([])
-const loading = ref(false)
-const selectedCamaId = ref(null)
+const camaSeleccionada = ref(null)
+const filtroUps = ref('')
+const filtroServicio = ref('')
+const upss = ref([])
+const servicios = ref([])
 
-// Modelos
-const paciente = ref({
-  id: null,
-  documento_identidad: '',
-  nombres: '',
-  apellidos: '',
-  fecha_nacimiento: '',
-  genero: 'M',
-  telefono: '',
-  direccion: ''
+// Computed
+const groupedCamas = computed(() => {
+  const grouped = {}
+
+  camas.value.forEach(cama => {
+    if (!grouped[cama.ups.id]) {
+      grouped[cama.ups.id] = {
+        id: cama.ups.id,
+        nombre: cama.ups.nombre,
+        servicios: {},
+        totalCamas: 0,
+        totalDisponibles: 0
+      }
+    }
+
+    if (!grouped[cama.ups.id].servicios[cama.servicio.id]) {
+      grouped[cama.ups.id].servicios[cama.servicio.id] = {
+        id: cama.servicio.id,
+        nombre: cama.servicio.nombre,
+        camas: []
+      }
+    }
+
+    grouped[cama.ups.id].servicios[cama.servicio.id].camas.push(cama)
+    grouped[cama.ups.id].totalCamas++
+    if (cama.estado.descripcion === 'Disponible') {
+      grouped[cama.ups.id].totalDisponibles++
+    }
+  })
+
+  for (const upsId in grouped) {
+    grouped[upsId].servicios = Object.values(grouped[upsId].servicios)
+  }
+
+  return Object.values(grouped)
 })
 
-const ingreso = ref({
-  paciente_id: null,
-  cama_id: null,
-  diagnostico: '',
-  medico_tratante: '',
-  observaciones: ''
+// Camas disponibles filtradas
+const camasDisponiblesFiltradas = computed(() => {
+  return camasDisponibles.value.filter(cama => {
+    const cumpleUps = !filtroUps.value || cama.ups.id == filtroUps.value
+    const cumpleServicio = !filtroServicio.value || cama.servicio.id == filtroServicio.value
+    return cumpleUps && cumpleServicio
+  })
 })
 
-// Función de validación de DNI/CE mejorada
-function validarDocumentoIdentidad(doc) {
-  if (!doc) return false
-  
-  // Eliminar espacios y caracteres no numéricos (excepto para CE que puede tener letras)
-  const limpio = doc.toString().trim().toUpperCase()
-  
-  // Validar DNI (8 dígitos)
-  if (/^\d{8}$/.test(limpio)) {
-    return true
-  }
-  
-  // Validar CE (Carné de Extranjería) - formato variado, normalmente letras y números
-  if (/^[A-Z0-9]{9,12}$/.test(limpio)) {
-    return true
-  }
-  
-  return false
+// Métodos
+function formatDateTime(dateTimeString) {
+  if (!dateTimeString) return 'No disponible'
+  const date = new Date(dateTimeString)
+  return date.toLocaleString('es-ES', {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit'
+  })
 }
 
-async function searchPaciente() {
-  try {
-    // Validar documento antes de proceder
-    if (!documentoIdentidad.value || !validarDocumentoIdentidad(documentoIdentidad.value)) {
-      toast.error('Ingrese un documento válido (DNI: 8 dígitos | CE: 9-12 caracteres alfanuméricos)', {
-        position: 'top-right',
-        duration: 5000
-      })
-      return
-    }
-
-    // Mostrar estado de carga
-    loading.value = true
-    
-    // Limpiar resultados anteriores
-    resetForms()
-    
-    // Asignar el documento al modelo (sin formato)
-    paciente.value.documento_identidad = documentoIdentidad.value.replace(/\D/g, '')
-    
-    // Buscar exactamente por documento
-    const response = await api.get(`pacientes/?documento_identidad=${paciente.value.documento_identidad}`)
-    
-    if (response.data.length > 0) {
-      // Mostrar el primer resultado (debería ser único por la unicidad del documento)
-      paciente.value = {
-        ...response.data[0],
-        // Asegurar formato de fecha para el input date
-        fecha_nacimiento: response.data[0].fecha_nacimiento?.split('T')[0] || ''
-      }
-      
-      showPacienteForm.value = false
-      
-      // Cargar camas disponibles
-      await fetchCamasDisponibles()
-      
-      toast.success('Paciente encontrado', { position: 'top-right' })
-      
-      // Mover el foco a la sección de asignación de cama
-      nextTick(() => {
-        const camaSection = document.querySelector('.col-md-6 .card')
-        if (camaSection) {
-          camaSection.scrollIntoView({ behavior: 'smooth' })
-        }
-      })
-    } else {
-      // Preparar nuevo registro si no se encuentra
-      paciente.value = {
-        documento_identidad: paciente.value.documento_identidad,
-        nombres: '',
-        apellidos: '',
-        fecha_nacimiento: '',
-        genero: 'M',
-        telefono: '',
-        direccion: ''
-      }
-      showPacienteForm.value = true
-      
-      toast.info('Documento no registrado. Complete los datos para nuevo registro', {
-        position: 'top-right',
-        duration: 4000
-      })
-      
-      // Enfocar el campo de nombres
-      nextTick(() => {
-        const nombresInput = document.querySelector('input[v-model="paciente.nombres"]')
-        if (nombresInput) {
-          nombresInput.focus()
-        }
-      })
-    }
-  } catch (error) {
-    console.error('Error en búsqueda:', error)
-    
-    let errorMessage = 'Error al buscar paciente'
-    if (error.response) {
-      if (error.response.data) {
-        if (typeof error.response.data === 'object') {
-          errorMessage = Object.entries(error.response.data)
-            .map(([key, value]) => `${key}: ${Array.isArray(value) ? value.join(', ') : value}`)
-            .join('; ')
-        } else {
-          errorMessage = error.response.data
-        }
-      }
-    } else {
-      errorMessage = error.message
-    }
-    
-    toast.error(errorMessage, {
-      position: 'top-right',
-      duration: 5000
-    })
-  } finally {
-    loading.value = false
+function calculateAge(birthDate) {
+  if (!birthDate) return 'No disponible'
+  const today = new Date()
+  const birthDateObj = new Date(birthDate)
+  let age = today.getFullYear() - birthDateObj.getFullYear()
+  const monthDiff = today.getMonth() - birthDateObj.getMonth()
+  if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDateObj.getDate())) {
+    age--
   }
+  return `${age} años`
 }
 
-// Función para formatear documento (opcional, para mostrar mejor)
-function formatearDocumento(doc) {
-  if (!doc) return ''
-  
-  // DNI peruano: 8 dígitos
-  if (/^\d{8}$/.test(doc)) {
-    return doc
-  }
-  
-  // CE: mostrar con formato (ejemplo: ABC-12345)
-  if (/^[A-Z0-9]{9,12}$/.test(doc)) {
-    if (doc.length <= 3) return doc
-    return `${doc.substring(0, 3)}-${doc.substring(3)}`
-  }
-  
-  return doc
-}
-
-function formatDate(dateString) {
-  if (!dateString) return 'No registrado';
-  const date = new Date(dateString);
-  return date.toLocaleDateString('es-PE', { year: 'numeric', month: '2-digit', day: '2-digit' });
-}
-
-function formatGenero(genero) {
-  const generos = {
+function formatGender(genderCode) {
+  const genders = {
     'M': 'Masculino',
     'F': 'Femenino',
     'O': 'Otro'
-  };
-  return generos[genero] || genero;
+  }
+  return genders[genderCode] || 'No especificado'
 }
 
-async function savePaciente() {
-    try {
-        let response;
-        
-        // Primero verificar si el paciente ya existe
-        const checkResponse = await api.get(`pacientes/?documento_identidad=${paciente.value.documento_identidad}`);
-        if (checkResponse.data.length > 0 && !paciente.value.id) {
-            // Si existe, cargar sus datos
-            paciente.value = checkResponse.data[0];
-            toast.info('Paciente encontrado, se cargaron sus datos', {position: 'top-right'});
-            showPacienteForm.value = false;
-            await fetchCamasDisponibles();
-            return;
-        }
-        
-        // Guardar o actualizar paciente
-        if (paciente.value.id) {
-            response = await api.put(`pacientes/${paciente.value.id}/`, paciente.value);
-            toast.success('Paciente actualizado', {position: 'top-right'});
-        } else {
-            response = await api.post('pacientes/', paciente.value);
-            paciente.value.id = response.data.id;
-            toast.success('Paciente registrado', {position: 'top-right'});
-        }
-        
-        // Si hay datos de ingreso, asignar cama
-        if (ingreso.value.diagnostico && ingreso.value.medico_tratante) {
-            await assignCamaAfterSave();
-        } else {
-            showPacienteForm.value = false;
-            await fetchCamasDisponibles();
-        }
-    } catch (error) {
-        console.error('Error:', error);
-        toast.error(`Error: ${error.response?.data?.detail || error.message}`, {position: 'top-right'});
-    }
+function calculateTimeSince(dateTimeString) {
+  if (!dateTimeString) return 'No disponible'
+  const now = new Date()
+  const then = new Date(dateTimeString)
+  const diff = now - then
+
+  const days = Math.floor(diff / (1000 * 60 * 60 * 24))
+  const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60))
+  const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60))
+
+  let result = ''
+  if (days > 0) result += `${days} día${days > 1 ? 's' : ''} `
+  if (hours > 0) result += `${hours} hora${hours > 1 ? 's' : ''} `
+  if (minutes > 0 || result === '') result += `${minutes} minuto${minutes !== 1 ? 's' : ''}`
+
+  return result.trim()
 }
 
-async function assignCamaAfterSave() {
-    if (!camasDisponibles.value.length) {
-        toast.warning('No hay camas disponibles', {position: 'top-right'});
-        return;
-    }
-    
-    // Asignar primera cama disponible
-    const cama = camasDisponibles.value[0];
-    ingreso.value.paciente_id = paciente.value.id;
-    ingreso.value.cama_id = cama.id;
-    
-    try {
-        await api.post('ingresos/', ingreso.value);
-        toast.success(`Cama ${cama.codcama} asignada`, {position: 'top-right'});
-        resetForms();
-    } catch (error) {
-        console.error('Error al asignar cama:', error);
-        toast.error(`Error al asignar cama: ${error.response?.data?.detail || error.message}`, {position: 'top-right'});
-    }
-}
-
-async function fetchCamasDisponibles() {
+async function fetchCamas() {
   try {
-    if (!paciente.value.id) return
-
     const ipress = JSON.parse(localStorage.getItem('user_ipress'))
     if (!ipress || !ipress.id) {
       toast.error('No se pudo determinar el establecimiento', { position: 'top-right' })
       return
     }
 
+    const response = await api.get(`cama/?ipress=${ipress.id}&expand=ingreso.paciente`)
+    camas.value = response.data
+  } catch (error) {
+    console.error('Error al cargar datos:', error)
+    toast.error('Error al cargar datos: ' + (error.response?.data?.detail || error.message), { position: 'top-right' })
+  }
+}
+
+async function fetchCamasDisponibles() {
+  try {
+    const ipress = JSON.parse(localStorage.getItem('user_ipress'))
+    if (!ipress?.id) return
+    
     const response = await api.get(`camas/disponibles/?ipress=${ipress.id}`)
     camasDisponibles.value = response.data
+    
+    // Extraer UPS y Servicios únicos para los filtros
+    const upsUnicas = {}
+    const serviciosUnicos = {}
+    
+    response.data.forEach(cama => {
+      upsUnicas[cama.ups.id] = cama.ups
+      serviciosUnicos[cama.servicio.id] = cama.servicio
+    })
+    
+    upss.value = Object.values(upsUnicas).sort((a, b) => a.nombre.localeCompare(b.nombre))
+    servicios.value = Object.values(serviciosUnicos).sort((a, b) => a.nombre.localeCompare(b.nombre))
+    
   } catch (error) {
     console.error('Error al cargar camas disponibles:', error)
-    toast.error('Error al cargar camas disponibles: ' + (error.response?.data?.detail || error.message), { position: 'top-right' })
+    toast.error('Error al cargar camas disponibles', { position: 'top-right' })
   }
 }
 
-function validateIngreso() {
-  if (!ingreso.value.diagnostico?.trim()) {
-    toast.error('El diagnóstico es requerido', { position: 'top-right' });
-    return false;
-  }
-  if (!ingreso.value.medico_tratante?.trim()) {
-    toast.error('El médico tratante es requerido', { position: 'top-right' });
-    return false;
-  }
-  if (!paciente.value.id) {
-    toast.error('Seleccione un paciente válido', { position: 'top-right' });
-    return false;
-  }
-  if (!JSON.parse(localStorage.getItem('user'))?.id) {
-    toast.error('No se pudo identificar al usuario', { position: 'top-right' });
-    return false;
-  }
-  return true;
-}
+async function showCamaDetails(cama) {
+  if (cama.estado.descripcion !== 'Disponible') {
+    selectedCama.value = cama
 
-async function selectCama(cama) {
-  if (!validateIngreso()) return;
-  
-  if (confirm(`¿Confirmar asignación de cama ${cama.codcama} al paciente ${paciente.value.nombres} ${paciente.value.apellidos}?`)) {
-    try {
-      loading.value = true;
-      selectedCamaId.value = cama.id;
-
-      const ingresoData = {
-        paciente: paciente.value.id,
-        cama: cama.id,
-        diagnostico: ingreso.value.diagnostico,
-        medico_tratante: ingreso.value.medico_tratante,
-        observaciones: ingreso.value.observaciones || ''
-      };
-
-      const response = await api.post('ingresos/', ingresoData);
-      toast.success('Paciente ingresado correctamente', { position: 'top-right' });
-      resetForms();
-      await fetchCamasDisponibles();
-    } catch (error) {
-      let errorMessage = 'Error al registrar ingreso';
-      
-      if (error.response) {
-        if (error.response.data) {
-          if (typeof error.response.data === 'object') {
-            errorMessage = Object.entries(error.response.data)
-              .map(([key, value]) => `${key}: ${Array.isArray(value) ? value.join(', ') : value}`)
-              .join('; ');
-          } else {
-            errorMessage = error.response.data;
-          }
-        }
-      } else {
-        errorMessage = error.message;
+    if (!cama.ingreso || !cama.ingreso.paciente) {
+      try {
+        const response = await api.get(`cama/${cama.id}/?expand=ingreso.paciente`)
+        selectedCama.value = response.data
+      } catch (error) {
+        console.error('Error al cargar detalles de la cama:', error)
+        toast.error('Error al cargar detalles del paciente')
       }
-
-      toast.error(errorMessage, { position: 'top-right', duration: 5000 });
-      console.error('Error completo:', error);
-    } finally {
-      loading.value = false;
-      selectedCamaId.value = null;
     }
+
+    if (!camaModal.value) {
+      camaModal.value = new Modal(document.getElementById('camaModal'))
+    }
+    camaModal.value.show()
   }
 }
 
-function resetForms() {
-  documentoIdentidad.value = ''
-  paciente.value = {
-    id: null,
-    documento_identidad: '',
-    nombres: '',
-    apellidos: '',
-    fecha_nacimiento: '',
-    genero: 'M',
-    telefono: '',
-    direccion: ''
+function iniciarTransferencia() {
+  if (!transferModal.value) {
+    transferModal.value = new Modal(document.getElementById('transferModal'))
   }
-  ingreso.value = {
-    paciente_id: null,
-    cama_id: null,
-    diagnostico: '',
-    medico_tratante: '',
-    observaciones: ''
+  
+  camaSeleccionada.value = null
+  filtroUps.value = ''
+  filtroServicio.value = ''
+  fetchCamasDisponibles()
+  
+  camaModal.value.hide()
+  transferModal.value.show()
+}
+
+function seleccionarCama(cama) {
+  camaSeleccionada.value = cama
+}
+
+async function confirmarTransferencia() {
+  if (!selectedCama.value || !camaSeleccionada.value) return
+  
+  try {
+    const response = await api.post(`ingresos/${selectedCama.value.ingreso.id}/transferir/`, {
+      nueva_cama_id: camaSeleccionada.value.id
+    })
+    
+    toast.success('Paciente transferido con éxito', { position: 'top-right' })
+    
+    // Actualizar datos
+    await fetchCamas()
+    
+    // Cerrar modales
+    if (transferModal.value) transferModal.value.hide()
+    if (camaModal.value) camaModal.value.hide()
+    
+  } catch (error) {
+    console.error('Error en transferencia:', error)
+    toast.error(error.response?.data?.error || 'Error al transferir paciente', { position: 'top-right' })
   }
-  showPacienteForm.value = false
-  camasDisponibles.value = []
 }
 
 // Inicialización
 onMounted(() => {
   const ipress = JSON.parse(localStorage.getItem('user_ipress'))
   ipressName.value = ipress?.descripcion || 'Establecimiento'
+  fetchCamas()
 })
 </script>
 
 <style scoped>
-.card-header.bg-gradient-info {
-  background: linear-gradient(135deg, #17a2b8 0%, #117a8b 100%);
+.card-header.bg-gradient-primary {
+  background: linear-gradient(135deg, #4e73df 0%, #224abe 100%);
 }
 
-.alert-info {
-  background-color: #d1ecf1;
-  border-color: #bee5eb;
-  color: #0c5460;
+.ups-container {
+  padding: 0 15px;
 }
 
-.table th {
-  font-size: 0.8rem;
+.ups-section {
+  background-color: #f8faff;
+  border-radius: 10px;
+  padding: 20px;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+}
+
+.ups-header {
+  padding-bottom: 15px;
+  border-bottom: 1px solid #e0e6ed;
+}
+
+.ups-icon {
+  width: 50px;
+  height: 50px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: #e3f2fd;
+  border-radius: 50%;
+}
+
+.servicios-container {
+  margin-top: 20px;
+}
+
+.servicio-section {
+  background-color: white;
+  border-radius: 8px;
+  padding: 15px;
+  box-shadow: 0 1px 5px rgba(0, 0, 0, 0.05);
+}
+
+.servicio-title {
+  color: #3a5169;
+  font-size: 1.1rem;
+  padding-bottom: 10px;
+  border-bottom: 1px dashed #e0e6ed;
+}
+
+.camas-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 15px;
+  margin-top: 15px;
+}
+
+.cama-item {
+  transition: transform 0.2s;
+}
+
+.cama-item:hover {
+  transform: translateY(-3px);
+}
+
+.cama-card {
+  display: flex;
+  align-items: center;
+  padding: 15px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  height: 100%;
+}
+
+.cama-card.available {
+  background-color: #e8f5e9;
+  border-left: 4px solid #4caf50;
+}
+
+.cama-card.occupied {
+  background-color: #ffebee;
+  border-left: 4px solid #f44336;
+}
+
+.cama-icon {
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-right: 15px;
+  font-size: 1.5rem;
+}
+
+.cama-card.available .cama-icon {
+  color: #4caf50;
+}
+
+.cama-card.occupied .cama-icon {
+  color: #f44336;
+}
+
+.cama-info {
+  flex: 1;
+}
+
+.cama-codigo {
   font-weight: 600;
+  margin-bottom: 3px;
 }
 
-.table td {
-  font-size: 0.9rem;
-  vertical-align: middle;
-}
-
-.btn-sm {
-  padding: 0.25rem 0.5rem;
+.cama-tipo {
   font-size: 0.8rem;
+  color: #666;
+  margin-bottom: 5px;
 }
 
-.form-label {
+.cama-status {
+  font-size: 0.75rem;
+  font-weight: 500;
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 10px;
+}
+
+.cama-status.available {
+  background-color: #c8e6c9;
+  color: #2e7d32;
+}
+
+.cama-status.occupied {
+  background-color: #ffcdd2;
+  color: #c62828;
+}
+
+.paciente-avatar {
+  padding: 10px;
+}
+
+.paciente-data {
+  background-color: #f9f9f9;
+  padding: 15px;
+  border-radius: 5px;
+}
+
+.paciente-data p {
+  margin-bottom: 8px;
+}
+
+.modal-header {
+  border-top-left-radius: 0;
+  border-top-right-radius: 0;
+}
+
+.bg-success {
+  background-color: #4caf50 !important;
+}
+
+.bg-danger {
+  background-color: #f44336 !important;
+}
+
+.text-success {
+  color: #4caf50 !important;
+}
+
+.text-danger {
+  color: #f44336 !important;
+}
+
+.badge {
+  font-size: 0.75rem;
   font-weight: 500;
 }
 
-.btn:disabled {
-  opacity: 0.7;
-  cursor: not-allowed;
+/* Estilos para el modal de transferencia */
+.camas-disponibles {
+  max-height: 400px;
+  overflow-y: auto;
+  padding: 10px;
+  border: 1px solid #eee;
+  border-radius: 5px;
 }
 
-/* Estilos para la sección de información del paciente */
-.patient-info-section {
-  background-color: #f8f9fa;
-  border-radius: 0.5rem;
-  padding: 1rem;
-  margin-bottom: 1.5rem;
+.card {
+  cursor: pointer;
+  transition: all 0.2s;
+  border: 2px solid transparent;
 }
 
-.patient-info-section h6 {
-  color: #495057;
-  font-weight: 600;
-  border-bottom: 1px solid #dee2e6;
-  padding-bottom: 0.5rem;
-  margin-bottom: 1rem;
+.card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
 }
 
-.patient-info-section p {
-  margin-bottom: 0.5rem;
+.card.border-primary {
+  border-color: #0d6efd !important;
+}
+
+/* Mejoras para los select de filtro */
+.form-select {
+  flex: 1;
+  min-width: 150px;
+}
+
+/* Estilo para el botón de transferencia */
+.btn-transferir {
+  background-color: #6c757d;
+  border-color: #6c757d;
+  color: white;
+}
+
+.btn-transferir:hover {
+  background-color: #5c636a;
+  border-color: #565e64;
 }
 </style>

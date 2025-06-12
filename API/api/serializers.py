@@ -32,6 +32,7 @@ class UPSViewSerializer(serializers.ModelSerializer):
         fields = '__all__'
 
 class CamaSerializer(serializers.ModelSerializer):
+    ingreso = serializers.SerializerMethodField()  # Añade este campo
     class Meta:
         model = Cama
         fields = '__all__'
@@ -43,7 +44,28 @@ class CamaSerializer(serializers.ModelSerializer):
             'estado': {'required': True},
             'ipress': {'required': True}
         }
-
+        
+    def get_ingreso(self, obj):
+        # Obtiene el ingreso activo (sin fecha de alta) para esta cama
+        ingreso = obj.ingresos.filter(fecha_alta__isnull=True).first()
+        if ingreso:
+            return {
+                'id': ingreso.id,
+                'fecha_ingreso': ingreso.fecha_ingreso,
+                'diagnostico': ingreso.diagnostico,
+                'medico_tratante': ingreso.medico_tratante,
+                'observaciones': ingreso.observaciones,
+                'paciente': {
+                    'id': ingreso.paciente.id,
+                    'documento': ingreso.paciente.documento_identidad,
+                    'nombres': ingreso.paciente.nombres,
+                    'apellidos': ingreso.paciente.apellidos,
+                    'fecha_nacimiento': ingreso.paciente.fecha_nacimiento,
+                    'genero': ingreso.paciente.genero
+                }
+            }
+        return None
+    
     def create(self, validated_data):
         servicio = validated_data['servicio']
         ipress = validated_data['ipress']

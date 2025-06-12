@@ -31,12 +31,12 @@ class TipoCamaViewSet(viewsets.ReadOnlyModelViewSet):
 class UPSViewSet(viewsets.ModelViewSet):
     queryset = UPS.objects.all().order_by('nombre')
     serializer_class = UPSViewSerializer
-    permission_classes = [IsAuthenticated]
+    permission_classes = [AllowAny]
 
 class ServicioViewSet(viewsets.ModelViewSet):
     queryset = Servicio.objects.all().order_by('nombre')
     serializer_class = ServicioSerializer
-    permission_classes = [IsAuthenticated]
+    permission_classes = [AllowAny]
     
 class IpressViewSet(viewsets.ModelViewSet):
     queryset = Ipress.objects.all()
@@ -119,6 +119,25 @@ class IngresoViewSet(viewsets.ModelViewSet):
         return super().get_queryset().filter(
             usuario=self.request.user
         ).order_by('-fecha_ingreso')
+        
+    @action(detail=True, methods=['post'])
+    def transferir(self, request, pk=None):
+        ingreso = self.get_object()
+        nueva_cama_id = request.data.get('nueva_cama_id')
+        
+        if not nueva_cama_id:
+            return Response({'error': 'Se requiere el ID de la nueva cama'}, status=400)
+        
+        try:
+            nueva_cama = Cama.objects.get(id=nueva_cama_id)
+            ingreso.transferir_a_cama(nueva_cama, request.user)
+            return Response({'status': 'Transferencia exitosa'})
+        except Cama.DoesNotExist:
+            return Response({'error': 'Cama no encontrada'}, status=404)
+        except ValueError as e:
+            return Response({'error': str(e)}, status=400)
+        except Exception as e:
+            return Response({'error': str(e)}, status=500)
 
 def perform_create(self, serializer):
     cama = serializer.validated_data['cama']
@@ -137,8 +156,8 @@ class CamaDisponibleList(ListAPIView):
     permission_classes = [IsAuthenticated]
     
     def get_queryset(self):
-        ipress_id = self.request.query_params.get('ipress', None)
-        estado_disponible = EstadoCama.objects.get(descripcion='Disponible')  # exact match
+        ipress_id = self.request.query_params.get('ipress')
+        estado_disponible = EstadoCama.objects.get(descripcion='Disponible')
         
         queryset = Cama.objects.filter(
             ipress_id=ipress_id,

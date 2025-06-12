@@ -141,3 +141,30 @@ class Ingreso(models.Model):
         self.cama.estado = estado_disponible
         self.cama.save()
         super().delete(*args, **kwargs)
+        
+    def transferir_a_cama(self, nueva_cama, usuario):
+        """
+        Transfiere el ingreso a una nueva cama
+        """
+        if nueva_cama.estado.descripcion != 'Disponible':
+            raise ValueError("La cama destino no está disponible")
+        
+        # Registrar la cama anterior
+        cama_anterior = self.cama
+        
+        # Actualizar a la nueva cama
+        self.cama = nueva_cama
+        self.save()
+        
+        # Actualizar estados de las camas
+        estado_ocupado = EstadoCama.objects.get(descripcion__icontains='Ocupada')
+        estado_disponible = EstadoCama.objects.get(descripcion__icontains='Disponible')
+        
+        nueva_cama.estado = estado_ocupado
+        nueva_cama.save()
+        
+        cama_anterior.estado = estado_disponible
+        cama_anterior.save()
+        
+        # Opcional: Podrías crear un registro histórico de la transferencia aquí
+        return self
