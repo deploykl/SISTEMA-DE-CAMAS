@@ -110,6 +110,8 @@ class PacienteSerializer(serializers.ModelSerializer):
         }
 
 class IngresoSerializer(serializers.ModelSerializer):
+    cama = CamaSerializer(read_only=True)  # Añadir esta línea
+
     class Meta:
         model = Ingreso
         fields = '__all__'

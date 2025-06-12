@@ -26,7 +26,7 @@
                         <label class="form-label">Documento de Identidad</label>
                         <div class="input-group">
                           <input type="text" class="form-control" v-model="documentoIdentidad"
-                            placeholder="Ingrese DNI/CE" required>
+                            placeholder="Ingrese DNI/CE" maxlength="8" @input="validateDocumento" required>
                           <button class="btn btn-primary" type="submit">
                             <i class="fas fa-search me-2"></i> Buscar
                           </button>
@@ -87,54 +87,93 @@
                         Paciente seleccionado: <strong>{{ paciente.nombres }} {{ paciente.apellidos }}</strong>
                       </div>
 
-                      <div class="mb-3">
-                        <label class="form-label">Diagnóstico Principal <span class="text-danger">*</span></label>
-                        <textarea class="form-control" v-model="ingreso.diagnostico" required></textarea>
+                      <!-- Mostrar datos de ingreso si el paciente ya tiene uno activo -->
+                      <!-- Mostrar datos de ingreso si el paciente ya tiene uno activo -->
+                      <div v-if="ingresoExistente" class="mb-4">
+                        <h6 class="fw-bold mb-3">Datos de Ingreso Actual</h6>
+                        <div class="mb-2">
+                          <label class="form-label fw-bold">Fecha de Ingreso:</label>
+                          <p class="form-control-plaintext">{{ formatDateTime(ingresoExistente.fecha_ingreso) }}</p>
+                        </div>
+                        <div class="mb-2">
+                          <label class="form-label fw-bold">Diagnóstico Principal:</label>
+                          <p class="form-control-plaintext">{{ ingresoExistente.diagnostico }}</p>
+                        </div>
+                        <div class="mb-2">
+                          <label class="form-label fw-bold">Médico Tratante:</label>
+                          <p class="form-control-plaintext">{{ ingresoExistente.medico_tratante }}</p>
+                        </div>
+                        <div class="mb-2" v-if="ingresoExistente.observaciones">
+                          <label class="form-label fw-bold">Observaciones:</label>
+                          <p class="form-control-plaintext">{{ ingresoExistente.observaciones }}</p>
+                        </div>
+                        <div class="mb-2">
+                          <label class="form-label fw-bold">Cama Asignada:</label>
+                          <p class="form-control-plaintext">
+                            {{ ingresoExistente.cama?.codcama }}
+                            ({{ ingresoExistente.cama?.servicio?.nombre }} -
+                            {{ ingresoExistente.cama?.estado?.descripcion }})
+                          </p>
+                        </div>
+                        <div class="alert alert-warning mt-3">
+                          <i class="fas fa-exclamation-triangle me-2"></i>
+                          Este paciente ya tiene un ingreso activo.
+                        </div>
                       </div>
 
-                      <div class="mb-3">
-                        <label class="form-label">Médico Tratante <span class="text-danger">*</span></label>
-                        <input type="text" class="form-control" v-model="ingreso.medico_tratante" required>
-                      </div>
+                      <!-- Mostrar formulario de ingreso solo si no hay ingreso existente -->
+                      <div v-else>
+                        <div class="mb-3">
+                          <label class="form-label">Diagnóstico Principal <span class="text-danger">*</span></label>
+                          <textarea class="form-control" v-model="ingreso.diagnostico" required></textarea>
+                        </div>
 
-                      <div class="mb-4">
-                        <label class="form-label">Observaciones</label>
-                        <textarea class="form-control" v-model="ingreso.observaciones"></textarea>
-                      </div>
+                        <div class="mb-3">
+                          <label class="form-label">Médico Tratante <span class="text-danger">*</span></label>
+                          <input type="text" class="form-control" v-model="ingreso.medico_tratante" required>
+                        </div>
 
-                      <div class="mb-4">
-                        <label class="form-label">Seleccionar Cama Disponible <span class="text-danger">*</span></label>
-                        <div class="table-responsive">
-                          <table class="table table-sm table-hover">
-                            <thead>
-                              <tr>
-                                <th>Código</th>
-                                <th>Tipo</th>
-                                <th>Servicio</th>
-                                <th>UPS</th>
-                                <th>Acción</th>
-                              </tr>
-                            </thead>
-                            <tbody>
-                              <tr v-for="cama in camasDisponibles" :key="cama.id">
-                                <td>{{ cama.codcama }}</td>
-                                <td>{{ cama.tipocama.descripcion }}</td>
-                                <td>{{ cama.servicio.nombre }}</td>
-                                <td>{{ cama.ups.nombre }}</td>
-                                <td>
-                                  <button class="btn btn-sm btn-primary" @click="selectCama(cama)" :disabled="loading">
-                                    <i class="fas fa-bed me-1"></i>
-                                    {{ loading && selectedCamaId === cama.id ? 'Asignando...' : 'Asignar' }}
-                                  </button>
-                                </td>
-                              </tr>
-                              <tr v-if="camasDisponibles.length === 0">
-                                <td colspan="5" class="text-center text-muted py-3">
-                                  No hay camas disponibles en este momento
-                                </td>
-                              </tr>
-                            </tbody>
-                          </table>
+                        <div class="mb-4">
+                          <label class="form-label">Observaciones</label>
+                          <textarea class="form-control" v-model="ingreso.observaciones"></textarea>
+                        </div>
+
+                        <div class="mb-4">
+                          <label class="form-label">Seleccionar Cama Disponible <span
+                              class="text-danger">*</span></label>
+                          <div class="table-responsive">
+                            <table class="table table-sm table-hover">
+                              <thead>
+                                <tr>
+                                  <th>Código</th>
+                                  <th>Tipo</th>
+                                  <th>Servicio</th>
+                                  <th>UPS</th>
+                                  <th>Acción</th>
+                                </tr>
+                              </thead>
+                              <tbody>
+                                <tr v-for="cama in camasDisponibles" :key="cama.id">
+                                  <td>{{ cama.codcama }}</td>
+                                  <td>{{ cama.tipocama.descripcion }}</td>
+                                  <td>{{ cama.servicio.nombre }}</td>
+                                  <td>{{ cama.ups.nombre }}</td>
+                                  <td>
+                                    <button class="btn btn-sm btn-primary" @click="selectCama(cama)"
+                                      :disabled="loading">
+                                      <i class="fas fa-bed me-1"></i>
+                                      {{ loading && selectedCamaId === cama.id ? 'Asignando...' : 'Asignar' }}
+                                    </button>
+                                  </td>
+                                </tr>
+                                <tr v-if="camasDisponibles.length === 0">
+                                  <td colspan="5" class="text-center text-muted py-3">
+                                    No hay camas disponibles en este momento
+                                  </td>
+                                </tr>
+                              </tbody>
+                            </table>
+                          </div>
                         </div>
                       </div>
                     </div>
@@ -168,6 +207,7 @@ const showPacienteForm = ref(false)
 const camasDisponibles = ref([])
 const loading = ref(false)
 const selectedCamaId = ref(null)
+const ingresoExistente = ref(null)
 
 // Modelos
 const paciente = ref({
@@ -190,6 +230,19 @@ const ingreso = ref({
 })
 
 // Funciones
+function formatDateTime(dateTimeString) {
+  if (!dateTimeString) return 'No disponible';
+
+  const date = new Date(dateTimeString);
+  return date.toLocaleString('es-ES', {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit'
+  });
+}
+
 async function searchPaciente() {
   try {
     // Primero buscar coincidencia exacta
@@ -198,7 +251,15 @@ async function searchPaciente() {
     if (exactMatch.data.length > 0) {
       paciente.value = exactMatch.data[0];
       showPacienteForm.value = false;
-      await fetchCamasDisponibles();
+
+      // Verificar si el paciente tiene un ingreso activo
+      await checkIngresoExistente(paciente.value.id);
+
+      // Solo buscar camas si no tiene ingreso activo
+      if (!ingresoExistente.value) {
+        await fetchCamasDisponibles();
+      }
+
       toast.success('Paciente encontrado', { position: 'top-right' });
       return;
     }
@@ -209,7 +270,15 @@ async function searchPaciente() {
     if (partialMatch.data.length > 0) {
       paciente.value = partialMatch.data[0];
       showPacienteForm.value = false;
-      await fetchCamasDisponibles();
+
+      // Verificar si el paciente tiene un ingreso activo
+      await checkIngresoExistente(paciente.value.id);
+
+      // Solo buscar camas si no tiene ingreso activo
+      if (!ingresoExistente.value) {
+        await fetchCamasDisponibles();
+      }
+
       toast.success('Paciente encontrado', { position: 'top-right' });
     } else {
       // Preparar nuevo registro
@@ -224,11 +293,47 @@ async function searchPaciente() {
         direccion: ''
       };
       showPacienteForm.value = true;
+      ingresoExistente.value = null;
       toast.info('Complete los datos para nuevo registro', { position: 'top-right' });
     }
   } catch (error) {
     console.error('Error en búsqueda:', error);
     toast.error(`Error: ${error.response?.data?.detail || error.message}`, { position: 'top-right' });
+  }
+}
+
+async function checkIngresoExistente(pacienteId) {
+  try {
+    const response = await api.get(`ingresos/?paciente=${pacienteId}&fecha_alta__isnull=true`);
+    if (response.data.length > 0) {
+      // Obtener detalles completos del ingreso (incluyendo cama)
+      const ingresoDetalle = await api.get(`ingresos/${response.data[0].id}/`);
+      ingresoExistente.value = ingresoDetalle.data;
+    } else {
+      ingresoExistente.value = null;
+    }
+  } catch (error) {
+    console.error('Error al verificar ingreso:', error);
+    ingresoExistente.value = null;
+  }
+}
+function validateDocumento(event) {
+  // Elimina cualquier carácter que no sea número
+  documentoIdentidad.value = documentoIdentidad.value.replace(/\D/g, '');
+  
+  // Limita a 8 caracteres (por si acaso el maxlength no funciona)
+  if (documentoIdentidad.value.length > 8) {
+    documentoIdentidad.value = documentoIdentidad.value.slice(0, 8);
+  }
+}
+
+function validatePacienteDocumento() {
+  // Elimina cualquier carácter que no sea número
+  paciente.value.documento_identidad = paciente.value.documento_identidad.replace(/\D/g, '');
+  
+  // Limita a 8 caracteres
+  if (paciente.value.documento_identidad.length > 8) {
+    paciente.value.documento_identidad = paciente.value.documento_identidad.slice(0, 8);
   }
 }
 
@@ -243,7 +348,14 @@ async function savePaciente() {
       paciente.value = checkResponse.data[0];
       toast.info('Paciente encontrado, se cargaron sus datos', { position: 'top-right' });
       showPacienteForm.value = false;
-      await fetchCamasDisponibles();
+
+      // Verificar si tiene ingreso activo
+      await checkIngresoExistente(paciente.value.id);
+
+      // Solo buscar camas si no tiene ingreso activo
+      if (!ingresoExistente.value) {
+        await fetchCamasDisponibles();
+      }
       return;
     }
 
@@ -337,25 +449,21 @@ async function selectCama(cama) {
       loading.value = true;
       selectedCamaId.value = cama.id;
 
-      // Obtener usuario del token directamente (mejor práctica)
-      const token = localStorage.getItem('auth_token');
-      if (!token) {
-        throw new Error('No se encontró el token de autenticación');
-      }
-
       const ingresoData = {
         paciente: paciente.value.id,
         cama: cama.id,
         diagnostico: ingreso.value.diagnostico,
         medico_tratante: ingreso.value.medico_tratante,
         observaciones: ingreso.value.observaciones || ''
-        // El backend debe obtener el usuario del token JWT
       };
 
       const response = await api.post('ingresos/', ingresoData);
       toast.success('Paciente ingresado correctamente', { position: 'top-right' });
+
+      // Actualizar el ingreso existente después de la asignación
+      await checkIngresoExistente(paciente.value.id);
+
       resetForms();
-      await fetchCamasDisponibles();
     } catch (error) {
       let errorMessage = 'Error al registrar ingreso';
 
@@ -441,5 +549,17 @@ onMounted(() => {
 .btn:disabled {
   opacity: 0.7;
   cursor: not-allowed;
+}
+
+.form-control-plaintext {
+  padding: 0.375rem 0;
+  margin-bottom: 0;
+  background-color: transparent;
+  border: solid transparent;
+  border-width: 1px 0;
+}
+
+.fw-bold {
+  font-weight: 600;
 }
 </style>

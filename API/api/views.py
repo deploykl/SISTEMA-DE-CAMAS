@@ -120,15 +120,17 @@ class IngresoViewSet(viewsets.ModelViewSet):
             usuario=self.request.user
         ).order_by('-fecha_ingreso')
 
-    def perform_create(self, serializer):
-        # Asignar automáticamente el usuario del token JWT
-        serializer.save(usuario=self.request.user)
-        
-        # Actualizar estado de la cama a Ocupado
-        cama = serializer.validated_data['cama']
-        estado_ocupado = EstadoCama.objects.get(descripcion__icontains='Ocupada')
-        cama.estado = estado_ocupado
-        cama.save()
+def perform_create(self, serializer):
+    cama = serializer.validated_data['cama']
+    if cama.estado.descripcion != 'Disponible':
+        raise serializers.ValidationError("La cama seleccionada no está disponible")
+    
+    # Rest of your existing code
+    serializer.save(usuario=self.request.user)
+    
+    estado_ocupado = EstadoCama.objects.get(descripcion__icontains='Ocupada')
+    cama.estado = estado_ocupado
+    cama.save()
 
 class CamaDisponibleList(ListAPIView):
     serializer_class = CamaDisponibleSerializer
