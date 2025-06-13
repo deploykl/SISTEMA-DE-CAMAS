@@ -126,30 +126,60 @@ class IngresoViewSet(viewsets.ModelViewSet):
         nueva_cama_id = request.data.get('nueva_cama_id')
         
         if not nueva_cama_id:
-            return Response({'error': 'Se requiere el ID de la nueva cama'}, status=400)
+            return Response({'error': 'Se requiere el ID de la nueva cama'}, status=status.HTTP_400_BAD_REQUEST)
         
         try:
+            # Verificar que el ingreso pertenece al usuario
+            if ingreso.usuario != request.user:
+                return Response(
+                    {'error': 'No tiene permisos para transferir este ingreso'},
+                    status=status.HTTP_403_FORBIDDEN
+                )
+            
             nueva_cama = Cama.objects.get(id=nueva_cama_id)
+            
+            # Verificar que la nueva cama pertenece al mismo IPRESS
+            if nueva_cama.ipress != ingreso.cama.ipress:
+                return Response(
+                    {'error': 'No se puede transferir a una cama de otro establecimiento'}, 
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+                
+            # Verificar que la cama destino está disponible
+            if nueva_cama.estado.descripcion.lower() != 'disponible':
+                return Response(
+                    {'error': 'La cama destino no está disponible'},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+            
+            # Realizar la transferencia
             ingreso.transferir_a_cama(nueva_cama, request.user)
-            return Response({'status': 'Transferencia exitosa'})
+            
+            # Serializar los datos actualizados
+            serializer = self.get_serializer(ingreso)
+            return Response({
+                'status': 'Transferencia exitosa',
+                'data': serializer.data
+            })
+            
         except Cama.DoesNotExist:
-            return Response({'error': 'Cama no encontrada'}, status=404)
+            return Response({'error': 'Cama no encontrada'}, status=status.HTTP_404_NOT_FOUND)
         except ValueError as e:
-            return Response({'error': str(e)}, status=400)
+            return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
         except Exception as e:
-            return Response({'error': str(e)}, status=500)
+            return Response({'error': f'Error en la transferencia: {str(e)}'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
-def perform_create(self, serializer):
-    cama = serializer.validated_data['cama']
-    if cama.estado.descripcion != 'Disponible':
-        raise serializers.ValidationError("La cama seleccionada no está disponible")
-    
-    # Rest of your existing code
-    serializer.save(usuario=self.request.user)
-    
-    estado_ocupado = EstadoCama.objects.get(descripcion__icontains='Ocupada')
-    cama.estado = estado_ocupado
-    cama.save()
+    def perform_create(self, serializer):
+        cama = serializer.validated_data['cama']
+        if cama.estado.descripcion != 'Disponible':
+            raise serializers.ValidationError("La cama seleccionada no está disponible")
+
+        # Rest of your existing code
+        serializer.save(usuario=self.request.user)
+
+        estado_ocupado = EstadoCama.objects.get(descripcion__icontains='Ocupada')
+        cama.estado = estado_ocupado
+        cama.save()
 
 class CamaDisponibleList(ListAPIView):
     serializer_class = CamaDisponibleSerializer
@@ -157,15 +187,24 @@ class CamaDisponibleList(ListAPIView):
     
     def get_queryset(self):
         ipress_id = self.request.query_params.get('ipress')
-        estado_disponible = EstadoCama.objects.get(descripcion='Disponible')
+        
+        # Asegurarse de obtener el estado "Disponible" correctamente
+        try:
+            estado_disponible = EstadoCama.objects.get(descripcion__iexact='Disponible')
+        except EstadoCama.DoesNotExist:
+            estado_disponible = None
         
         queryset = Cama.objects.filter(
             ipress_id=ipress_id,
-            estado=estado_disponible,
             ipress__usuario=self.request.user
-        ).select_related('tipocama', 'servicio', 'ups')
+        ).select_related('tipocama', 'servicio', 'ups', 'estado')
+        
+        # Filtrar solo camas disponibles si existe el estado
+        if estado_disponible:
+            queryset = queryset.filter(estado=estado_disponible)
         
         return queryset
+        
 
 class LoginView(APIView):
     permission_classes = [AllowAny]

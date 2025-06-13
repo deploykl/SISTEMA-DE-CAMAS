@@ -32,7 +32,11 @@ class UPSViewSerializer(serializers.ModelSerializer):
         fields = '__all__'
 
 class CamaSerializer(serializers.ModelSerializer):
+    estado = EstadoCamaSerializer(read_only=True)
     ingreso = serializers.SerializerMethodField()  # Añade este campo
+    tipocama = TipoCamaSerializer()  # Serializador completo en lugar de StringRelatedField
+    servicio = ServicioSerializer()  # Serializador completo
+    ups = UPSViewSerializer()       # Serializador completo
     class Meta:
         model = Cama
         fields = '__all__'
@@ -46,55 +50,71 @@ class CamaSerializer(serializers.ModelSerializer):
         }
         
     def get_ingreso(self, obj):
-        # Obtiene el ingreso activo (sin fecha de alta) para esta cama
         ingreso = obj.ingresos.filter(fecha_alta__isnull=True).first()
-        if ingreso:
-            return {
-                'id': ingreso.id,
-                'fecha_ingreso': ingreso.fecha_ingreso,
-                'diagnostico': ingreso.diagnostico,
-                'medico_tratante': ingreso.medico_tratante,
-                'observaciones': ingreso.observaciones,
-                'paciente': {
-                    'id': ingreso.paciente.id,
-                    'documento': ingreso.paciente.documento_identidad,
-                    'nombres': ingreso.paciente.nombres,
-                    'apellidos': ingreso.paciente.apellidos,
-                    'fecha_nacimiento': ingreso.paciente.fecha_nacimiento,
-                    'genero': ingreso.paciente.genero
-                }
+        if not ingreso:
+            return None
+
+        paciente_data = None
+        if hasattr(ingreso, 'paciente') and ingreso.paciente:
+            paciente_data = {
+                'id': ingreso.paciente.id,
+                'documento': ingreso.paciente.documento_identidad,
+                'nombres': ingreso.paciente.nombres,
+                'apellidos': ingreso.paciente.apellidos,
+                'fecha_nacimiento': ingreso.paciente.fecha_nacimiento,
+                'genero': ingreso.paciente.genero
             }
-        return None
-    
+
+        return {
+            'id': ingreso.id,
+            'fecha_ingreso': ingreso.fecha_ingreso,
+            'diagnostico': ingreso.diagnostico,
+            'medico_tratante': ingreso.medico_tratante,
+            'observaciones': ingreso.observaciones,
+            'paciente': paciente_data
+        }
+
     def create(self, validated_data):
-        servicio = validated_data['servicio']
-        ipress = validated_data['ipress']
-
-        camas_existentes = Cama.objects.filter(
-            servicio=servicio,
-            ipress=ipress
-        ).values_list('codcama', flat=True)
-
-        numeros_existentes = []
-        for codigo in camas_existentes:
-            try:
-                numero = int(codigo.split('-')[1])
-                numeros_existentes.append(numero)
-            except (IndexError, ValueError):
-                continue
+        try:
+            servicio = validated_data.get('servicio')
+            ipress = validated_data.get('ipress')
             
-        siguiente_numero = 1
-        if numeros_existentes:
-            max_numero = max(numeros_existentes)
-            for i in range(1, max_numero + 2):
-                if i not in numeros_existentes:
-                    siguiente_numero = i
-                    break
+            if not servicio or not ipress:
+                raise serializers.ValidationError("Servicio e IPRESS son requeridos para generar el código de cama")
                 
-        nuevo_codigo = f"{servicio.prefijo}-{siguiente_numero:03d}"
-        validated_data['codcama'] = nuevo_codigo
-
-        return super().create(validated_data)
+            # Generar código de cama
+            camas_existentes = Cama.objects.filter(
+                servicio=servicio,
+                ipress=ipress
+            )
+            
+            siguiente_numero = 1
+            if camas_existentes.exists():
+                # Extraer números existentes
+                numeros = []
+                for cama in camas_existentes:
+                    try:
+                        num = int(cama.codcama.split('-')[1])
+                        numeros.append(num)
+                    except (IndexError, ValueError):
+                        continue
+                    
+                if numeros:
+                    max_num = max(numeros)
+                    # Buscar huecos en la numeración
+                    for i in range(1, max_num + 2):
+                        if i not in numeros:
+                            siguiente_numero = i
+                            break
+                    else:
+                        siguiente_numero = max_num + 1
+            
+            validated_data['codcama'] = f"{servicio.prefijo}-{siguiente_numero:03d}"
+            
+            return super().create(validated_data)
+            
+        except Exception as e:
+            raise serializers.ValidationError(f"Error al generar código de cama: {str(e)}")
 
     def to_representation(self, instance):
         representation = super().to_representation(instance)
@@ -132,7 +152,7 @@ class PacienteSerializer(serializers.ModelSerializer):
         }
 
 class IngresoSerializer(serializers.ModelSerializer):
-    cama = CamaSerializer(read_only=True)  # Añadir esta línea
+    cama = serializers.PrimaryKeyRelatedField(queryset=Cama.objects.all())  # Cambiado a escribible
 
     class Meta:
         model = Ingreso

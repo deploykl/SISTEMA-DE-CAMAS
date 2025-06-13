@@ -38,24 +38,27 @@
 
                     <div class="camas-grid">
                       <div v-for="cama in servicio.camas" :key="cama.id" class="cama-item">
-                        <div class="cama-card" :class="{
-                          'available': cama.estado.descripcion === 'Disponible',
-                          'occupied': cama.estado.descripcion !== 'Disponible'
-                        }" @click="cama.estado.descripcion !== 'Disponible' ? showCamaDetails(cama) : null">
-                          <div class="cama-icon">
-                            <i class="fas fa-bed"></i>
-                          </div>
-                          <div class="cama-info">
-                            <div class="cama-codigo">{{ cama.codcama }}</div>
-                            <div class="cama-tipo">{{ cama.tipocama.descripcion }}</div>
-                            <div v-if="cama.estado.descripcion === 'Disponible'" class="cama-status available">
-                              Disponible
-                            </div>
-                            <div v-else class="cama-status occupied">
-                              Ocupada
-                            </div>
-                          </div>
-                        </div>
+                       <div class="cama-card" :class="{
+  'available': cama.estado?.descripcion?.toLowerCase() === 'disponible',
+  'occupied': cama.estado?.descripcion?.toLowerCase() !== 'disponible'
+}" @click="showCamaDetails(cama)">
+  <div class="cama-icon">
+    <i class="fas fa-bed"></i>
+  </div>
+  <div class="cama-info">
+    <div class="cama-codigo">{{ cama.codcama }}</div>
+    <div class="cama-tipo">{{ cama.tipocama?.descripcion || 'No especificado' }}</div>
+    <div v-if="cama.estado?.descripcion?.toLowerCase() === 'disponible'" class="cama-status available">
+      Disponible
+    </div>
+    <div v-else class="cama-status occupied">
+      {{ cama.estado?.descripcion || 'Ocupada' }}
+    </div>
+    <div v-if="cama.ingreso" class="cama-paciente">
+      <small>{{ cama.ingreso.paciente?.nombres }} {{ cama.ingreso.paciente?.apellidos }}</small>
+    </div>
+  </div>
+</div>
                       </div>
                     </div>
                   </div>
@@ -66,6 +69,9 @@
             <div v-else class="text-center py-5">
               <i class="fas fa-bed fa-4x text-muted mb-3"></i>
               <h5 class="text-muted">No hay camas registradas en este establecimiento</h5>
+              <button class="btn btn-primary mt-3" @click="fetchCamas">
+                <i class="fas fa-sync-alt me-2"></i> Intentar nuevamente
+              </button>
             </div>
           </div>
         </div>
@@ -77,12 +83,12 @@
       <div class="modal-dialog modal-lg">
         <div class="modal-content">
           <div class="modal-header" :class="{
-            'bg-success': selectedCama?.estado.descripcion === 'Disponible',
-            'bg-danger': selectedCama?.estado.descripcion !== 'Disponible'
+            'bg-success': selectedCama?.estado?.descripcion === 'Disponible',
+            'bg-danger': selectedCama?.estado?.descripcion !== 'Disponible'
           }">
             <h5 class="modal-title text-white">
               <i class="fas fa-bed me-2"></i> Cama {{ selectedCama?.codcama }}
-              <span class="badge bg-light text-dark ms-2">{{ selectedCama?.estado.descripcion }}</span>
+              <span class="badge bg-light text-dark ms-2">{{ selectedCama?.estado?.descripcion || 'Desconocido' }}</span>
             </h5>
             <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
           </div>
@@ -98,24 +104,24 @@
                     <div class="card-body">
                       <div class="mb-3">
                         <label class="form-label fw-bold">UPS:</label>
-                        <p class="form-control-plaintext">{{ selectedCama.ups.nombre }}</p>
+                        <p class="form-control-plaintext">{{ selectedCama.ups?.nombre || 'No asignada' }}</p>
                       </div>
                       <div class="mb-3">
                         <label class="form-label fw-bold">Servicio:</label>
-                        <p class="form-control-plaintext">{{ selectedCama.servicio.nombre }}</p>
+                        <p class="form-control-plaintext">{{ selectedCama.servicio?.nombre || 'No asignado' }}</p>
                       </div>
                       <div class="mb-3">
                         <label class="form-label fw-bold">Tipo de Cama:</label>
-                        <p class="form-control-plaintext">{{ selectedCama.tipocama.descripcion }}</p>
+                        <p class="form-control-plaintext">{{ selectedCama.tipocama?.descripcion || 'No especificado' }}</p>
                       </div>
                       <div class="mb-3">
                         <label class="form-label fw-bold">Estado:</label>
                         <p class="form-control-plaintext">
                           <span :class="{
-                            'badge bg-success': selectedCama.estado.descripcion === 'Disponible',
-                            'badge bg-danger': selectedCama.estado.descripcion !== 'Disponible'
+                            'badge bg-success': selectedCama.estado?.descripcion === 'Disponible',
+                            'badge bg-danger': selectedCama.estado?.descripcion !== 'Disponible'
                           }">
-                            {{ selectedCama.estado.descripcion }}
+                            {{ selectedCama.estado?.descripcion || 'Desconocido' }}
                           </span>
                         </p>
                       </div>
@@ -124,7 +130,7 @@
                 </div>
 
                 <!-- Información del paciente (si está ocupada) -->
-                <div class="col-md-6" v-if="selectedCama.estado.descripcion !== 'Disponible' && selectedCama.ingreso">
+                <div class="col-md-6" v-if="selectedCama?.ingreso?.paciente">
                   <div class="card">
                     <div class="card-header bg-light">
                       <h6 class="mb-0"><i class="fas fa-user-injured me-2"></i>Paciente Ocupante</h6>
@@ -135,10 +141,9 @@
                           <i class="fas fa-user-circle fa-3x text-primary"></i>
                         </div>
                         <div>
-                          <h5>{{ selectedCama.ingreso.paciente.nombres }} {{ selectedCama.ingreso.paciente.apellidos }}
-                          </h5>
+                          <h5>{{ selectedCama.ingreso.paciente.nombres }} {{ selectedCama.ingreso.paciente.apellidos }}</h5>
                           <p class="text-muted mb-1">
-                            <i class="fas fa-id-card me-1"></i> DNI: {{ selectedCama.ingreso.paciente.documento }}
+                            <i class="fas fa-id-card me-1"></i> DNI: {{ selectedCama.ingreso.paciente.documento_identidad }}
                           </p>
                           <p class="text-muted mb-1">
                             <i class="fas fa-venus-mars me-1"></i>
@@ -163,26 +168,24 @@
                         <div class="col-md-6">
                           <div class="mb-3">
                             <label class="form-label fw-bold">Fecha de Ingreso:</label>
-                            <p class="form-control-plaintext">{{ formatDateTime(selectedCama.ingreso.fecha_ingreso) }}
-                            </p>
+                            <p class="form-control-plaintext">{{ formatDateTime(selectedCama.ingreso.fecha_ingreso) }}</p>
                           </div>
                           <div class="mb-3">
                             <label class="form-label fw-bold">Tiempo de Ocupación:</label>
-                            <p class="form-control-plaintext">{{ calculateTimeSince(selectedCama.ingreso.fecha_ingreso)
-                            }}</p>
+                            <p class="form-control-plaintext">{{ calculateTimeSince(selectedCama.ingreso.fecha_ingreso) }}</p>
                           </div>
                         </div>
                         <div class="col-md-6">
                           <div class="mb-3">
                             <label class="form-label fw-bold">Médico Tratante:</label>
-                            <p class="form-control-plaintext">{{ selectedCama.ingreso.medico_tratante }}</p>
+                            <p class="form-control-plaintext">{{ selectedCama.ingreso.medico_tratante || 'No especificado' }}</p>
                           </div>
                         </div>
                       </div>
 
                       <div class="mb-3">
                         <label class="form-label fw-bold">Diagnóstico:</label>
-                        <p class="form-control-plaintext">{{ selectedCama.ingreso.diagnostico }}</p>
+                        <p class="form-control-plaintext">{{ selectedCama.ingreso.diagnostico || 'No especificado' }}</p>
                       </div>
 
                       <div class="mb-3" v-if="selectedCama.ingreso.observaciones">
@@ -199,10 +202,8 @@
             <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
               <i class="fas fa-times me-1"></i> Cerrar
             </button>
-            <button v-if="selectedCama?.estado.descripcion !== 'Disponible'" 
-                    type="button" 
-                    class="btn btn-primary"
-                    @click="iniciarTransferencia">
+            <button v-if="selectedCama?.estado?.descripcion !== 'Disponible' && selectedCama?.ingreso?.paciente"
+              type="button" class="btn btn-primary" @click="iniciarTransferencia">
               <i class="fas fa-exchange-alt me-1"></i> Transferir Paciente
             </button>
           </div>
@@ -221,13 +222,13 @@
             <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
           </div>
           <div class="modal-body">
-            <div v-if="selectedCama">
+            <div v-if="selectedCama?.ingreso?.paciente">
               <div class="alert alert-info">
                 <i class="fas fa-info-circle me-2"></i>
                 Transferir a <strong>{{ selectedCama.ingreso.paciente.nombres }} {{ selectedCama.ingreso.paciente.apellidos }}</strong>
-                (DNI: {{ selectedCama.ingreso.paciente.documento }}) a una nueva cama
+                (DNI: {{ selectedCama.ingreso.paciente.documento_identidad }}) a una nueva cama
               </div>
-              
+
               <div class="mb-4">
                 <label class="form-label fw-bold">Filtrar por:</label>
                 <div class="d-flex gap-3">
@@ -241,25 +242,23 @@
                   </select>
                 </div>
               </div>
-              
+
               <div class="camas-disponibles">
                 <h6 class="mb-3">Camas Disponibles</h6>
-                
+
                 <div v-if="camasDisponibles.length === 0" class="alert alert-warning">
                   No hay camas disponibles con los filtros seleccionados
                 </div>
-                
+
                 <div class="row">
-                  <div v-for="cama in camasDisponiblesFiltradas" 
-                       :key="cama.id" 
-                       class="col-md-4 mb-3"
-                       @click="seleccionarCama(cama)">
+                  <div v-for="cama in camasDisponiblesFiltradas" :key="cama.id" class="col-md-4 mb-3"
+                    @click="seleccionarCama(cama)">
                     <div class="card h-100" :class="{ 'border-primary': camaSeleccionada?.id === cama.id }">
                       <div class="card-body text-center">
                         <h5>{{ cama.codcama }}</h5>
-                        <div class="text-muted">{{ cama.ups.nombre }}</div>
-                        <div class="text-muted">{{ cama.servicio.nombre }}</div>
-                        <div class="text-muted">{{ cama.tipocama.descripcion }}</div>
+                        <div class="text-muted">{{ cama.ups?.nombre }}</div>
+                        <div class="text-muted">{{ cama.servicio?.nombre }}</div>
+                        <div class="text-muted">{{ cama.tipocama?.descripcion }}</div>
                         <div class="badge bg-success mt-2">Disponible</div>
                       </div>
                     </div>
@@ -272,10 +271,7 @@
             <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
               <i class="fas fa-times me-1"></i> Cancelar
             </button>
-            <button type="button" 
-                    class="btn btn-primary" 
-                    :disabled="!camaSeleccionada"
-                    @click="confirmarTransferencia">
+            <button type="button" class="btn btn-primary" :disabled="!camaSeleccionada" @click="confirmarTransferencia">
               <i class="fas fa-check me-1"></i> Confirmar Transferencia
             </button>
           </div>
@@ -314,6 +310,9 @@ const groupedCamas = computed(() => {
   const grouped = {}
 
   camas.value.forEach(cama => {
+    // Verificar que la cama tenga UPS y Servicio
+    if (!cama.ups || !cama.servicio) return
+    
     if (!grouped[cama.ups.id]) {
       grouped[cama.ups.id] = {
         id: cama.ups.id,
@@ -334,7 +333,7 @@ const groupedCamas = computed(() => {
 
     grouped[cama.ups.id].servicios[cama.servicio.id].camas.push(cama)
     grouped[cama.ups.id].totalCamas++
-    if (cama.estado.descripcion === 'Disponible') {
+    if (cama.estado?.descripcion === 'Disponible') {
       grouped[cama.ups.id].totalDisponibles++
     }
   })
@@ -349,8 +348,8 @@ const groupedCamas = computed(() => {
 // Camas disponibles filtradas
 const camasDisponiblesFiltradas = computed(() => {
   return camasDisponibles.value.filter(cama => {
-    const cumpleUps = !filtroUps.value || cama.ups.id == filtroUps.value
-    const cumpleServicio = !filtroServicio.value || cama.servicio.id == filtroServicio.value
+    const cumpleUps = !filtroUps.value || (cama.ups && cama.ups.id == filtroUps.value)
+    const cumpleServicio = !filtroServicio.value || (cama.servicio && cama.servicio.id == filtroServicio.value)
     return cumpleUps && cumpleServicio
   })
 })
@@ -415,8 +414,21 @@ async function fetchCamas() {
       return
     }
 
-    const response = await api.get(`cama/?ipress=${ipress.id}&expand=ingreso.paciente`)
+    ipressName.value = ipress.descripcion || 'Establecimiento'
+    
+    // Modificado para incluir todos los datos relacionados
+    const response = await api.get(`cama/?ipress=${ipress.id}&expand=ups,servicio,tipocama,estado,ingreso.paciente`)
     camas.value = response.data
+    
+    // Cargar también las UPS y servicios para los filtros
+    const [upsRes, serviciosRes] = await Promise.all([
+      api.get('ups/'),
+      api.get('servicio/')
+    ])
+    
+    upss.value = upsRes.data
+    servicios.value = serviciosRes.data
+    
   } catch (error) {
     console.error('Error al cargar datos:', error)
     toast.error('Error al cargar datos: ' + (error.response?.data?.detail || error.message), { position: 'top-right' })
@@ -426,62 +438,57 @@ async function fetchCamas() {
 async function fetchCamasDisponibles() {
   try {
     const ipress = JSON.parse(localStorage.getItem('user_ipress'))
-    if (!ipress?.id) return
+    if (!ipress || !ipress.id) return
+
+    // Obtener camas con estado "Disponible"
+    const response = await api.get(`cama/?ipress=${ipress.id}&estado__descripcion=Disponible&expand=ups,servicio,tipocama,estado`)
     
-    const response = await api.get(`camas/disponibles/?ipress=${ipress.id}`)
-    camasDisponibles.value = response.data
-    
-    // Extraer UPS y Servicios únicos para los filtros
-    const upsUnicas = {}
-    const serviciosUnicos = {}
-    
-    response.data.forEach(cama => {
-      upsUnicas[cama.ups.id] = cama.ups
-      serviciosUnicos[cama.servicio.id] = cama.servicio
-    })
-    
-    upss.value = Object.values(upsUnicas).sort((a, b) => a.nombre.localeCompare(b.nombre))
-    servicios.value = Object.values(serviciosUnicos).sort((a, b) => a.nombre.localeCompare(b.nombre))
+    // Filtrar para asegurar que solo sean camas disponibles
+    camasDisponibles.value = response.data.filter(cama => 
+      cama.estado?.descripcion?.toLowerCase() === 'disponible'
+    )
+
+    // Actualizar listas de filtros
+    upss.value = [...new Set(response.data
+      .filter(cama => cama.ups)
+      .map(cama => ({
+        id: cama.ups.id,
+        nombre: cama.ups.nombre
+      }))
+    )]
+
+    servicios.value = [...new Set(response.data
+      .filter(cama => cama.servicio)
+      .map(cama => ({
+        id: cama.servicio.id,
+        nombre: cama.servicio.nombre
+      }))
+    )]
     
   } catch (error) {
     console.error('Error al cargar camas disponibles:', error)
-    toast.error('Error al cargar camas disponibles', { position: 'top-right' })
+    toast.error('Error al cargar camas disponibles: ' + (error.response?.data?.detail || error.message))
   }
 }
 
-async function showCamaDetails(cama) {
-  if (cama.estado.descripcion !== 'Disponible') {
-    selectedCama.value = cama
+async function iniciarTransferencia() {
+  try {
+    await fetchCamasDisponibles()
 
-    if (!cama.ingreso || !cama.ingreso.paciente) {
-      try {
-        const response = await api.get(`cama/${cama.id}/?expand=ingreso.paciente`)
-        selectedCama.value = response.data
-      } catch (error) {
-        console.error('Error al cargar detalles de la cama:', error)
-        toast.error('Error al cargar detalles del paciente')
-      }
+    if (!transferModal.value) {
+      transferModal.value = new Modal(document.getElementById('transferModal'))
     }
 
-    if (!camaModal.value) {
-      camaModal.value = new Modal(document.getElementById('camaModal'))
-    }
-    camaModal.value.show()
-  }
-}
+    camaSeleccionada.value = null
+    filtroUps.value = selectedCama.value.ups?.id || ''
+    filtroServicio.value = selectedCama.value.servicio?.id || ''
 
-function iniciarTransferencia() {
-  if (!transferModal.value) {
-    transferModal.value = new Modal(document.getElementById('transferModal'))
+    camaModal.value.hide()
+    transferModal.value.show()
+  } catch (error) {
+    console.error('Error al iniciar transferencia:', error)
+    toast.error('Error al preparar transferencia: ' + (error.response?.data?.detail || error.message))
   }
-  
-  camaSeleccionada.value = null
-  filtroUps.value = ''
-  filtroServicio.value = ''
-  fetchCamasDisponibles()
-  
-  camaModal.value.hide()
-  transferModal.value.show()
 }
 
 function seleccionarCama(cama) {
@@ -489,32 +496,68 @@ function seleccionarCama(cama) {
 }
 
 async function confirmarTransferencia() {
-  if (!selectedCama.value || !camaSeleccionada.value) return
-  
+  if (!selectedCama.value || !camaSeleccionada.value) {
+    toast.warning('Debe seleccionar una cama destino', { position: 'top-right' })
+    return
+  }
+
   try {
     const response = await api.post(`ingresos/${selectedCama.value.ingreso.id}/transferir/`, {
       nueva_cama_id: camaSeleccionada.value.id
+    }, {
+      validateStatus: function (status) {
+        return status < 500; // Manejar todos los errores excepto 500
+      }
     })
-    
-    toast.success('Paciente transferido con éxito', { position: 'top-right' })
-    
-    // Actualizar datos
-    await fetchCamas()
-    
-    // Cerrar modales
-    if (transferModal.value) transferModal.value.hide()
-    if (camaModal.value) camaModal.value.hide()
-    
+
+    if (response.status === 200) {
+      toast.success('Paciente transferido con éxito', { position: 'top-right' })
+      await fetchCamas()
+      if (transferModal.value) transferModal.value.hide()
+      if (camaModal.value) camaModal.value.hide()
+    } else {
+      // Mostrar error específico del servidor
+      const errorMsg = response.data?.error || 'Error al transferir paciente'
+      toast.error(errorMsg, { position: 'top-right' })
+    }
+
   } catch (error) {
     console.error('Error en transferencia:', error)
-    toast.error(error.response?.data?.error || 'Error al transferir paciente', { position: 'top-right' })
+    let errorMsg = 'Error al conectar con el servidor'
+    
+    if (error.response) {
+      errorMsg = error.response.data?.error || 
+                 error.response.data?.detail || 
+                 'Error en la transferencia'
+    }
+    
+    toast.error(errorMsg, { position: 'top-right' })
+  }
+}
+
+async function showCamaDetails(cama) {
+  try {
+    // Hacer una copia del objeto cama para evitar mutaciones directas
+    selectedCama.value = { ...cama }
+
+    // Si no hay ingreso o paciente, cargar los datos completos
+    if (!selectedCama.value.ingreso || !selectedCama.value.ingreso.paciente) {
+      const response = await api.get(`cama/${cama.id}/?expand=ingreso.paciente,ups,servicio,tipocama,estado`)
+      selectedCama.value = response.data
+    }
+
+    if (!camaModal.value) {
+      camaModal.value = new Modal(document.getElementById('camaModal'))
+    }
+    camaModal.value.show()
+  } catch (error) {
+    console.error('Error al cargar detalles de la cama:', error)
+    toast.error('Error al cargar detalles del paciente: ' + (error.response?.data?.detail || error.message))
   }
 }
 
 // Inicialización
 onMounted(() => {
-  const ipress = JSON.parse(localStorage.getItem('user_ipress'))
-  ipressName.value = ipress?.descripcion || 'Establecimiento'
   fetchCamas()
 })
 </script>
@@ -734,5 +777,14 @@ onMounted(() => {
 .btn-transferir:hover {
   background-color: #5c636a;
   border-color: #565e64;
+}
+
+/* Estilos para cuando no hay datos */
+.text-center.py-5 {
+  padding: 3rem 0;
+}
+
+.text-center.py-5 i {
+  opacity: 0.5;
 }
 </style>

@@ -146,25 +146,35 @@ class Ingreso(models.Model):
         """
         Transfiere el ingreso a una nueva cama
         """
-        if nueva_cama.estado.descripcion != 'Disponible':
+        if not nueva_cama:
+            raise ValueError("No se proporcionó una cama destino")
+            
+        if nueva_cama.estado.descripcion.lower() != 'disponible':
             raise ValueError("La cama destino no está disponible")
         
         # Registrar la cama anterior
         cama_anterior = self.cama
         
-        # Actualizar a la nueva cama
-        self.cama = nueva_cama
-        self.save()
-        
-        # Actualizar estados de las camas
-        estado_ocupado = EstadoCama.objects.get(descripcion__icontains='Ocupada')
-        estado_disponible = EstadoCama.objects.get(descripcion__icontains='Disponible')
-        
-        nueva_cama.estado = estado_ocupado
-        nueva_cama.save()
-        
-        cama_anterior.estado = estado_disponible
-        cama_anterior.save()
-        
-        # Opcional: Podrías crear un registro histórico de la transferencia aquí
-        return self
+        try:
+            # Actualizar a la nueva cama
+            self.cama = nueva_cama
+            self.usuario = usuario
+            self.save()
+            
+            # Actualizar estados de las camas
+            estado_ocupado = EstadoCama.objects.get(descripcion__iexact='Ocupada')
+            estado_disponible = EstadoCama.objects.get(descripcion__iexact='Disponible')
+            
+            nueva_cama.estado = estado_ocupado
+            nueva_cama.save()
+            
+            cama_anterior.estado = estado_disponible
+            cama_anterior.save()
+            
+            return self
+        except Exception as e:
+            # Revertir cambios en caso de error
+            if hasattr(self, 'cama') and cama_anterior:
+                self.cama = cama_anterior
+                self.save()
+            raise e
